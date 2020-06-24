@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <Version>1.0.0</Version>
+    <Company>Corsinvest Srl</Company>
+    <Authors>Daniele Corsini</Authors>
+    <Copyright>Corsinvest Srl</Copyright>
+    <Product>Corsinvest for Proxmox VE Metrics Exporter Api</Product>
+    <AssemblyTitle>Corsinvest for Proxmox VE Metrics Exporter Api</AssemblyTitle>
+    <Description>Corsinvest for Proxmox VE Metrics Exporter Api</Description>
+
+    <PackageProjectUrl>https://github.com/Corsinvest/cv4pve-metrics-exporter</PackageProjectUrl>
+    <PackageTags>ProxmoxVE;Api,Client;Rest;Corsinvest;Metrics;Exporter;InfluxDb;Prometheus</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryType>Github</RepositoryType>
+    <RepositoryUrl>https://github.com/Corsinvest/cv4pve-metrics-exporter</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="" />
+    <None Include="..\..\icon.png" Pack="true" PackagePath="" />
+    <none Include="..\..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj" /> -->
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="2.5.3" />
+    <PackageReference Include="InfluxDB.Client" Version="1.9.0" />
+    <PackageReference Include="prometheus-net" Version="3.6.0" />
+  </ItemGroup>
+</Project>
