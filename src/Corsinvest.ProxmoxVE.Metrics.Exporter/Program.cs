@@ -47,7 +47,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter
                                                           port,
                                                           url,
                                                           prefix);
-                                                          
+
                     exporter.Start();
 
                     app.Out.WriteLine("Corsinvest for Proxmox VE");
