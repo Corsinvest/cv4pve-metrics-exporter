@@ -17,6 +17,7 @@ Options:
   -?|-h|--help      Show help information
   --version         Show version information
   --host            The host name host[:port],host1[:port],host2[:port]
+  --api-token       Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
   --username        User name <username>@<realm>
   --password        The password. Specify 'file:path_file' to store password in file.
 
@@ -54,6 +55,13 @@ this software export metrics from Proxmox VE.
 * Installation unzip file extract binary
 * Not require installation in Proxmox VE
 * Execute out side Proxmox VE
+* Use Api token --api-token parameter
+
+## Api token
+
+From version 6.2 of Proxmox VE is possible to use [Api token](https://pve.proxmox.com/pve-docs/pveum-plain.html).
+This feature permit execute Api without using user and password.
+If using **Privilege Separation** when create api token remember specify in permission.
 
 ## Configuration
 
