@@ -32,13 +32,14 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter
                 var optPort = cmd.Option<int>("--http-port", $"Http port (default: {PrometheusExporter.DEFAULT_PORT})", CommandOptionType.SingleValue);
                 var optUrl = cmd.Option("--http-url", $"Http url (default: {PrometheusExporter.DEFAULT_URL})", CommandOptionType.SingleValue);
                 var optPrefix = cmd.Option("--prefix", $"Prefix export (default: {PrometheusExporter.DEFAULT_PREFIX})", CommandOptionType.SingleValue);
+                var optNodeDiskInfo = cmd.Option("--node-disk-info", "Export disk info (disk,wearout,smart)", CommandOptionType.NoValue);
 
                 cmd.OnExecute(() =>
                 {
                     var host = optHost.HasValue() ? optHost.Value() : PrometheusExporter.DEFAULT_HOST;
-                    var port=optPort.HasValue() ? optPort.ParsedValue : PrometheusExporter.DEFAULT_PORT;
-                    var url= optUrl.HasValue() ? optUrl.Value() : PrometheusExporter.DEFAULT_URL;
-                    var prefix= optPrefix.HasValue() ? optPrefix.Value() : PrometheusExporter.DEFAULT_PREFIX;
+                    var port = optPort.HasValue() ? optPort.ParsedValue : PrometheusExporter.DEFAULT_PORT;
+                    var url = optUrl.HasValue() ? optUrl.Value() : PrometheusExporter.DEFAULT_URL;
+                    var prefix = optPrefix.HasValue() ? optPrefix.Value() : PrometheusExporter.DEFAULT_PREFIX;
 
                     var exporter = new PrometheusExporter(app.GetHost().Value(),
                                                           app.GetUsername().Value(),
@@ -46,13 +47,15 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter
                                                           host,
                                                           port,
                                                           url,
-                                                          prefix);
+                                                          prefix,
+                                                          optNodeDiskInfo.HasValue());
 
                     exporter.Start();
 
                     app.Out.WriteLine("Corsinvest for Proxmox VE");
                     app.Out.WriteLine($"Cluster: {app.GetHost().Value()} - User: {app.GetUsername().Value()}");
                     app.Out.WriteLine($"Exporter Prometheus: http://{host}:{port}/{url} - Prefix: {prefix}");
+                    app.Out.WriteLine($"Export Node Disk Info: {optNodeDiskInfo.HasValue()}");
 
                     Console.ReadLine();
 

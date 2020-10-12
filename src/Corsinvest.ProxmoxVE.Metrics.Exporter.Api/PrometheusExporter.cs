@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Corsinvest.ProxmoxVE.Api;
@@ -35,6 +36,9 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
         private readonly Gauge Up;
         private readonly Gauge NodeInfo;
+        private readonly Gauge NodeDiskWearout;
+        private readonly Gauge NodeDiskHealth;
+        private readonly Gauge NodeDiskSmart;
         private readonly Gauge ClusterInfo;
         private readonly Gauge VersionInfo;
         private readonly Gauge GuestInfo;
@@ -45,6 +49,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         private readonly Dictionary<string, Gauge> DicNodeExtraInfo = new Dictionary<string, Gauge>();
         private readonly MetricServer _server;
         private readonly CollectorRegistry _registry;
+        private readonly bool _exportNodeDiskInfo;
 
         /// <summary>
         /// Constructor
@@ -56,19 +61,28 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         /// <param name="port"></param>
         /// <param name="url"></param>
         /// <param name="prefix"></param>
+        /// <param name="exportNodeDiskInfo"></param>
         public PrometheusExporter(string pveHostsAndPortHA,
                                   string pveUsername,
                                   string pvePassword,
                                   string host,
                                   int port,
                                   string url,
-                                  string prefix) : this(Prometheus.Metrics.NewCustomRegistry(), prefix)
+                                  string prefix,
+                                  bool exportNodeDiskInfo)
+                                  : this(Prometheus.Metrics.NewCustomRegistry(), prefix, exportNodeDiskInfo)
         {
             _registry.AddBeforeCollectCallback(() =>
             {
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 var pveClient = ClientHelper.GetClientFromHA(pveHostsAndPortHA, null);
                 pveClient.Login(pveUsername, pvePassword);
                 Collect(pveClient);
+
+                stopwatch.Stop();
+                //Console.WriteLine("Elapsed Time is {0} ms", stopwatch.ElapsedMilliseconds);
             });
 
             _server = new MetricServer(host, port, url, _registry);
@@ -79,9 +93,12 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         /// </summary>
         /// <param name="registry"></param>
         /// <param name="prefix"></param>
-        public PrometheusExporter(CollectorRegistry registry, string prefix)
+        /// <param name="exportNodeDiskInfo"></param>
+        public PrometheusExporter(CollectorRegistry registry, string prefix, bool exportNodeDiskInfo)
         {
             _registry = registry;
+            _exportNodeDiskInfo = exportNodeDiskInfo;
+
             var metricFactory = Prometheus.Metrics.WithCustomRegistry(registry);
 
             //create gauges
@@ -90,39 +107,60 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                         new GaugeConfiguration { LabelNames = new[] { "id" } });
 
             NodeInfo = metricFactory.CreateGauge($"{prefix}_node_info",
-                                                        "Node info",
+                                                "Node info",
+                                                new GaugeConfiguration
+                                                {
+                                                    LabelNames = new[] { "id", "ip", "level", "local", "name", "nodeid" }
+                                                });
+
+            NodeDiskWearout = metricFactory.CreateGauge($"{prefix}_node_disk_Wearout",
+                                                        "Node disk wearout",
                                                         new GaugeConfiguration
                                                         {
-                                                            LabelNames = new[] { "id", "ip", "level", "local", "name", "nodeid" }
+                                                            LabelNames = new[] { "serial", "node", "type", "dev" }
+                                                        });
+
+            NodeDiskHealth = metricFactory.CreateGauge($"{prefix}_node_disk_health",
+                                                        "Node disk health",
+                                                        new GaugeConfiguration
+                                                        {
+                                                            LabelNames = new[] { "serial", "node", "type", "dev" }
+                                                        });
+
+            NodeDiskSmart = metricFactory.CreateGauge($"{prefix}_node_disk_smart",
+                                                        "Node disk smart",
+                                                        new GaugeConfiguration
+                                                        {
+                                                            LabelNames = new[] { "serial", "node", "type", "dev", "name" }
                                                         });
 
             ClusterInfo = metricFactory.CreateGauge($"{prefix}_cluster_info",
-                                                         "Node info",
-                                                         new GaugeConfiguration
-                                                         {
-                                                             LabelNames = new[] { "id", "nodes", "quorate", "version" }
-                                                         });
+                                                    "Cluster info",
+                                                    new GaugeConfiguration
+                                                    {
+                                                        LabelNames = new[] { "id", "nodes", "quorate", "version" }
+                                                    });
 
             VersionInfo = metricFactory.CreateGauge($"{prefix}_version_info",
-                                                         "Proxmox VE version info",
-                                                         new GaugeConfiguration
-                                                         {
-                                                             LabelNames = new[] { "release", "repoid", "version" }
-                                                         });
+                                                    "Proxmox VE version info",
+                                                    new GaugeConfiguration
+                                                    {
+                                                        LabelNames = new[] { "release", "repoid", "version" }
+                                                    });
 
             GuestInfo = metricFactory.CreateGauge($"{prefix}_guest_info",
-                                                        "VM/CT info",
-                                                        new GaugeConfiguration
-                                                        {
-                                                            LabelNames = new[] { "id", "node", "name", "type" }
-                                                        });
+                                                    "VM/CT info",
+                                                    new GaugeConfiguration
+                                                    {
+                                                        LabelNames = new[] { "id", "node", "name", "type" }
+                                                    });
 
             StorageInfo = metricFactory.CreateGauge($"{prefix}_storage_info",
-                                                         "Storage info",
-                                                         new GaugeConfiguration
-                                                         {
-                                                             LabelNames = new[] { "id", "node", "storage" }
-                                                         });
+                                                    "Storage info",
+                                                    new GaugeConfiguration
+                                                    {
+                                                        LabelNames = new[] { "id", "node", "storage", "shared" }
+                                                    });
 
             // StorageDef = metricFactory.CreateGauge($"{prefix}_storage_def",
             //                                             "Storage info 1",
@@ -136,20 +174,19 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
         private void CreateGauges(MetricFactory metricFactory, string prefix)
         {
-
             var defs = new (string Key, string Name, string Description)[]
             {
-                ("maxdisk","disk_size_bytes","Size of storage device"),
-                ("disk","disk_usage_bytes","Disk usage in bytes"),
-                ("maxmem","memory_size_bytes","Size of memory"),
-                ("mem","memory_usage_bytes","Memory usage in bytes"),
-                ("netout","network_transmit_bytes","Number of bytes transmitted over the network"),
-                ("netin","network_receive_bytes","Number of bytes received over the network"),
-                ("diskwrite","disk_write_bytes","Number of bytes written to storage"),
-                ("diskread","disk_read_bytes","Number of bytes read from storage"),
-                ("cpu","cpu_usage_ratio",$"CPU usage (value between 0.0 and {prefix}_cpu_usage_limit)"),
-                ("maxcpu","cpu_usage_limit","Maximum allowed CPU usage"),
-                ("uptime","uptime_seconds","Number of seconds since the last boot"),
+                ( "maxdisk", "disk_size_bytes", "Size of storage device" ),
+                ( "disk", "disk_usage_bytes", "Disk usage in bytes" ),
+                ( "maxmem", "memory_size_bytes", "Size of memory" ),
+                ( "mem", "memory_usage_bytes", "Memory usage in bytes" ),
+                ( "netout", "network_transmit_bytes", "Number of bytes transmitted over the network" ),
+                ( "netin", "network_receive_bytes", "Number of bytes received over the network" ),
+                ( "diskwrite", "disk_write_bytes", "Number of bytes written to storage" ),
+                ( "diskread", "disk_read_bytes", "Number of bytes read from storage" ),
+                ( "cpu", "cpu_usage_ratio",$"CPU usage (value between 0.0 and {prefix}_cpu_usage_limit)" ),
+                ( "maxcpu", "cpu_usage_limit", "Maximum allowed CPU usage" ),
+                ( "uptime", "uptime_seconds", "Number of seconds since the last boot" ),
             };
 
             foreach (var (Key, Name, Description) in defs)
@@ -161,9 +198,9 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
             var defs2 = new (string Key, string Description)[]
             {
-                ("actual","Balloon memory actual"),
-                ("max_mem","Balloon memory max"),
-                ("last_update","Balloon memory last update"),
+                ( "actual" , "Balloon memory actual" ),
+                ( "max_mem" , "Balloon memory max" ),
+                ( "last_update" , "Balloon memory last update" ),
             };
 
             foreach (var (Key, Description) in defs2)
@@ -176,9 +213,9 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
             var defs3 = new (string Key, string Description)[]
             {
-                ("load_avg1","Node load avg1"),
-                ("load_avg5","Node load avg5"),
-                ("load_avg15","Node load avg15"),
+                ( "load_avg1", "Node load avg1" ),
+                ( "load_avg5", "Node load avg5" ),
+                ( "load_avg15", "Node load avg15" ),
             };
 
             foreach (var (Key, Description) in defs3)
@@ -190,12 +227,12 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
             var defs4 = new (string Key, string Description)[]
             {
-                ("memory_used","Node memory used"),
-                ("memory_total","Node memory total"),
-                ("memory_free","Node memory free"),
-                ("swap_used","Node swap used"),
-                ("swap_total","Node swap total"),
-                ("swap_free","Node swap free"),
+                ( "memory_used", "Node memory used" ),
+                ( "memory_total", "Node memory total" ),
+                ( "memory_free", "Node memory free" ),
+                ( "swap_used", "Node swap used" ),
+                ( "swap_total", "Node swap total" ),
+                ( "swap_free", "Node swap free" ),
             };
 
             foreach (var (Key, Description) in defs4)
@@ -222,7 +259,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         /// <param name="client"></param>
         public void Collect(PveClient client)
         {
-            SetGauge1(VersionInfo, client.Version.Version().Response.data);
+            SetGauge(VersionInfo, client.Version.Version().Response.data);
 
             var formatinfo = new NumberFormatInfo
             {
@@ -235,7 +272,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                 {
                     case "node":
                         Up.WithLabels(item.id as string).Set(item.online);
-                        SetGauge1(NodeInfo, item);
+                        SetGauge(NodeInfo, item);
 
                         if (item.online == 1)
                         {
@@ -260,12 +297,43 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                                 }
                                 item1.Value.WithLabels(node).Set(value);
                             }
+
+                            if (_exportNodeDiskInfo)
+                            {
+                                //disk info
+                                foreach (var disk in client.Nodes[node].Disks.List.List().ToEnumerable())
+                                {
+                                    var labelValues = new string[] { disk.serial as string,
+                                                                     node,
+                                                                     disk.type as string,
+                                                                     disk.devpath as string };
+
+                                    var wearout = DynamicHelper.GetValue(disk, "wearout");
+                                    if (wearout is double wearoutD) { NodeDiskHealth.WithLabels(labelValues).Set(wearoutD); }
+
+                                    NodeDiskWearout.WithLabels(labelValues).Set((disk.health as string) == "PASSED" ? 1 : 0);
+
+                                    //smart
+                                    var smart = client.Nodes[node].Disks.Smart.Smart(disk.devpath as string).Response.data;
+                                    if (DynamicHelper.GetValue(smart, "attributes") != null)
+                                    {
+                                        foreach (var attribute in smart.attributes)
+                                        {
+                                            var labelValuesAttr = new List<string>();
+                                            labelValuesAttr.AddRange(labelValues);
+                                            labelValuesAttr.Add(attribute.name as string);
+
+                                            NodeDiskSmart.WithLabels(labelValuesAttr.ToArray()).Set(attribute.value);
+                                        }
+                                    }
+                                }
+                            }
                         }
                         break;
 
                     case "cluster":
                         Up.WithLabels($"cluster/{item.name}").Set(item.quorate);
-                        SetGauge1(ClusterInfo, item);
+                        SetGauge(ClusterInfo, item);
                         break;
 
                     default: break;
@@ -283,7 +351,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                         var isRunning = item.status as string == "running";
 
                         Up.WithLabels($"{item.id}").Set(isRunning ? 1 : 0);
-                        SetGauge1(GuestInfo, item);
+                        SetGauge(GuestInfo, item);
 
                         if (isRunning && item.type == "qemu")
                         {
@@ -301,17 +369,17 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                                                     Value = double.Parse(a.Split("=")[1], formatinfo)
                                                 });
 
-                            foreach (var item1 in DicGuestBalloonInfo)
+                            foreach (var gbi in DicGuestBalloonInfo)
                             {
-                                var row = data.Where(a => a.Name == item1.Key).FirstOrDefault();
-                                if (row != null) { item1.Value.WithLabels(new[] { vmId, node }).Set(row.Value * 1024 * 1024); }
+                                var row = data.Where(a => a.Name == gbi.Key).FirstOrDefault();
+                                if (row != null) { gbi.Value.WithLabels(new[] { vmId, node }).Set(row.Value * 1024 * 1024); }
                             }
                         }
                         break;
 
                     case "storage":
                         Up.WithLabels($"{item.id}").Set((item.status == "available") ? 1 : 0);
-                        SetGauge1(StorageInfo, item);
+                        SetGauge(StorageInfo, item);
                         break;
 
                     default: break;
@@ -320,15 +388,15 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                 foreach (var item1 in DicResourceInfo)
                 {
                     var value = DynamicHelper.GetValue(item, item1.Key);
-                    if (value != null) { item1.Value.WithLabels(GetValues(item, item1.Value)).Set(value); }
+                    if (value != null) { item1.Value.WithLabels(GetValues(item1.Value, item)).Set(value); }
                 }
             }
         }
 
-        private static void SetGauge1(Gauge gauge, dynamic values)
-            => gauge.WithLabels(GetValues(values, gauge)).Set(1);
+        private static void SetGauge(Gauge gauge, dynamic values)
+            => gauge.WithLabels(GetValues(gauge, values)).Set(1);
 
-        private static string[] GetValues(dynamic obj, Gauge gauge)
+        private static string[] GetValues(Gauge gauge, dynamic obj)
             => gauge.LabelNames.Select(a => DynamicHelper.GetValue(obj, a) + "").Cast<string>().ToArray();
 
     }

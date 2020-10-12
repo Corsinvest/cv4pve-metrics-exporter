@@ -81,15 +81,18 @@ root@debian:~# cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam 
 Corsinvest for Proxmox VE
 Cluster: 192.168.0.100 - User: root
 Exporter Prometheus: http://localhost:9221/metrics/
+Export Node Disk Info: False
 ```
 
 ## Prometheus
 
 For Prometheus are available more parameters:
 
-```sh
---http-host   Http host (default: localhost)
---http-port   Http port (default: 9221)
---http-url    Http url (default: metrics/)
---prefix      Prefix export (default: cv4pve)
+```txt
+--http-host       Http host (default: localhost)
+--http-port       Http port (default: 9221)
+--http-url        Http url (default: metrics/)
+--prefix          Prefix export (default: cv4pve)
+--node-disk-info  Export disk info (disk,wearout,smart)
+                  Require more time
 ```
