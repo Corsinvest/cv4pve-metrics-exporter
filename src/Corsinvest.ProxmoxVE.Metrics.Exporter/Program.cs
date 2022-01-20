@@ -11,6 +11,7 @@
  */
 
 using System;
+using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
 using Corsinvest.ProxmoxVE.Api.Shell.Helpers;
 using Corsinvest.ProxmoxVE.Metrics.Exporter.Api;
 using McMaster.Extensions.CommandLineUtils;
@@ -36,33 +37,44 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter
 
                 cmd.OnExecute(() =>
                 {
+                    var hostsAndPortHA = app.GetHost().Value();
                     var host = optHost.HasValue() ? optHost.Value() : PrometheusExporter.DEFAULT_HOST;
+                    var username = app.GetUsername().Value();
+                    var password = app.GetPasswordFromOption();
                     var port = optPort.HasValue() ? optPort.ParsedValue : PrometheusExporter.DEFAULT_PORT;
                     var url = optUrl.HasValue() ? optUrl.Value() : PrometheusExporter.DEFAULT_URL;
                     var prefix = optPrefix.HasValue() ? optPrefix.Value() : PrometheusExporter.DEFAULT_PREFIX;
 
-                    var exporter = new PrometheusExporter(app.GetHost().Value(),
-                                                          app.GetUsername().Value(),
-                                                          app.GetPasswordFromOption(),
-                                                          host,
-                                                          port,
-                                                          url,
-                                                          prefix,
-                                                          optNodeDiskInfo.HasValue());
+                    var client = ClientHelper.GetClientFromHA(hostsAndPortHA, null);
+                    if (client.Login(username, password))
+                    {
+                        var exporter = new PrometheusExporter(hostsAndPortHA,
+                                                              username,
+                                                              password,
+                                                              host,
+                                                              port,
+                                                              url,
+                                                              prefix,
+                                                              optNodeDiskInfo.HasValue());
 
-                    exporter.Start();
+                        exporter.Start();
 
-                    app.Out.WriteLine("Corsinvest for Proxmox VE");
-                    app.Out.WriteLine($"Cluster: {app.GetHost().Value()} - User: {app.GetUsername().Value()}");
-                    app.Out.WriteLine($"Exporter Prometheus: http://{host}:{port}/{url} - Prefix: {prefix}");
-                    app.Out.WriteLine($"Export Node Disk Info: {optNodeDiskInfo.HasValue()}");
+                        app.Out.WriteLine("Corsinvest for Proxmox VE");
+                        app.Out.WriteLine($"Cluster: {app.GetHost().Value()} - User: {app.GetUsername().Value()}");
+                        app.Out.WriteLine($"Exporter Prometheus: http://{host}:{port}/{url} - Prefix: {prefix}");
+                        app.Out.WriteLine($"Export Node Disk Info: {optNodeDiskInfo.HasValue()}");
 
-                    Console.ReadLine();
+                        Console.ReadLine();
 
-                    try { exporter.Stop(); }
-                    catch { }
+                        try { exporter.Stop(); }
+                        catch { }
 
-                    app.Out.WriteLine("End application");
+                        app.Out.WriteLine("End application");
+                    }
+                    else
+                    {
+                        throw new ApplicationException("Error authentication!");
+                    }
                 });
             });
 

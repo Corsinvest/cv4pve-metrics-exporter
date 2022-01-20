@@ -1,6 +1,6 @@
 # cv4pve-metrics-export
 
-[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-metrics-exporter.svg)](LICENSE.md) [![AppVeyor branch](https://img.shields.io/appveyor/ci/franklupo/cv4pve-metrics-exporter/master.svg)](https://ci.appveyor.com/project/franklupo/cv4pve-metrics-exporter)
+[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-metrics-exporter.svg)](LICENSE.md)
 
 ```text
     ______                _                      __
