@@ -56,6 +56,7 @@ this software export metrics from Proxmox VE.
 * Not require installation in Proxmox VE
 * Execute out side Proxmox VE
 * Use Api token --api-token parameter
+* Execution with file parameter e.g. @FileParameter.parm
 
 ## Api token
 
@@ -95,4 +96,21 @@ For Prometheus are available more parameters:
 --prefix          Prefix export (default: cv4pve)
 --node-disk-info  Export disk info (disk,wearout,smart)
                   Require more time
+```
+
+## Execution with file parameter
+
+Is possible execute with file parameter
+
+```sh
+root@debian:~# cv4pve-metrics-exporter @FileParameter.parm
+```
+
+File **FileParameter.parm**
+
+```txt
+--host=192.168.0.100
+--username=root@pam
+--password=fagiano
+prometheus
 ```

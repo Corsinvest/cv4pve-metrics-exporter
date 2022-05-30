@@ -11,15 +11,7 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Metrics.Exporter/bin/Debug/net6.0/cv4pve-metrics-exporter.dll",
-            "args": [
-                "--host",
-                "10.92.90.101" ,
-                "--username",
-                "root",
-                "--password",
-                "campanacor321!1",
-                "prometheus"
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Metrics.Exporter",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",

@@ -1,10 +1,18 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-FileCopyrightText: 2019 Copyright Corsinvest Srl
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 using Corsinvest.ProxmoxVE.Api;
-using Corsinvest.ProxmoxVE.Api.Extension;
-using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
+using Corsinvest.ProxmoxVE.Api.Extension.Utils;
+using Microsoft.Extensions.Logging;
 using Prometheus;
 
 namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
@@ -57,6 +65,8 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         /// <param name="pveHostsAndPortHA"></param>
         /// <param name="pveUsername"></param>
         /// <param name="pvePassword"></param>
+        /// <param name="pveApiToken"></param>
+        /// <param name="loggerFactory"></param>
         /// <param name="host"></param>
         /// <param name="port"></param>
         /// <param name="url"></param>
@@ -65,6 +75,8 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         public PrometheusExporter(string pveHostsAndPortHA,
                                   string pveUsername,
                                   string pvePassword,
+                                  string pveApiToken,
+                                  ILoggerFactory loggerFactory,
                                   string host,
                                   int port,
                                   string url,
@@ -72,14 +84,15 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                                   bool exportNodeDiskInfo)
                                   : this(Prometheus.Metrics.NewCustomRegistry(), prefix, exportNodeDiskInfo)
         {
-            _registry.AddBeforeCollectCallback(() =>
+            _registry.AddBeforeCollectCallback(async () =>
             {
                 var stopwatch = new Stopwatch();
                 stopwatch.Start();
 
-                var client = ClientHelper.GetClientFromHA(pveHostsAndPortHA, null);
-                client.Login(pveUsername, pvePassword);
-                Collect(client);
+                var client = ClientHelper.GetClientFromHA(pveHostsAndPortHA);
+                client.LoggerFactory = loggerFactory;
+                if (string.IsNullOrWhiteSpace(pveApiToken)) { await client.Login(pveUsername, pvePassword); }
+                await Collect(client);
 
                 stopwatch.Stop();
             });
@@ -232,17 +245,17 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
         /// Collect data
         /// </summary>
         /// <param name="client"></param>
-        public void Collect(PveClient client)
+        public async Task Collect(PveClient client)
         {
-            var aa = client.Version.Version();
-            SetGauge(_versionInfo, client.Version.Version().Response.data);
+            //todo fix in new version use decode model
+            SetGauge(_versionInfo, (await client.Version.Version()).Response.data);
 
-            var formatinfo = new NumberFormatInfo
+            var formatInfo = new NumberFormatInfo
             {
                 NumberDecimalSeparator = "."
             };
 
-            foreach (var item in client.Cluster.Status.GetStatus().ToEnumerable())
+            foreach (var item in (await client.Cluster.Status.GetStatus()).ToEnumerable())
             {
                 switch (item.type)
                 {
@@ -253,7 +266,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                         if (item.online == 1)
                         {
                             var node = item.name as string;
-                            var data = client.Nodes[node].Status.Status().Response.data;
+                            var data = (await client.Nodes[node].Status.Status()).Response.data;
 
                             foreach (var item1 in _nodeExtraInfo)
                             {
@@ -262,9 +275,9 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                                     "memory_used" => data.memory.used,
                                     "memory_total" => data.memory.total,
                                     "memory_free" => data.memory.free,
-                                    "load_avg1" => double.Parse(data.loadavg[0], formatinfo),
-                                    "load_avg5" => double.Parse(data.loadavg[1], formatinfo),
-                                    "load_avg15" => double.Parse(data.loadavg[2], formatinfo),
+                                    "load_avg1" => double.Parse(data.loadavg[0], formatInfo),
+                                    "load_avg5" => double.Parse(data.loadavg[1], formatInfo),
+                                    "load_avg15" => double.Parse(data.loadavg[2], formatInfo),
                                     "swap_used" => data.swap.used,
                                     "swap_total" => data.swap.total,
                                     "swap_free" => data.swap.free,
@@ -276,21 +289,23 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                             if (_exportNodeDiskInfo)
                             {
                                 //disk info
-                                foreach (var disk in client.Nodes[node].Disks.List.List().ToEnumerable())
+                                foreach (var disk in (await client.Nodes[node].Disks.List.List()).ToEnumerable())
                                 {
                                     var labelValues = new string[] { disk.serial as string,
                                                                      node,
                                                                      disk.type as string,
                                                                      disk.devpath as string };
 
-                                    var wearout = DynamicHelper.GetValue(disk, "wearout");
-                                    if (wearout is double wearoutD) { _nodeDiskHealth.WithLabels(labelValues).Set(wearoutD); }
+                                    if (ExistProperty(disk, "wearout") != null)
+                                    {
+                                        _nodeDiskHealth.WithLabels(labelValues).Set(GetValue<double>(disk, "wearout"));
+                                    }
 
                                     _nodeDiskWearout.WithLabels(labelValues).Set((disk.health as string) == "PASSED" ? 1 : 0);
 
                                     //smart
-                                    var smart = client.Nodes[node].Disks.Smart.Smart(disk.devpath as string).Response.data;
-                                    if (DynamicHelper.GetValue(smart, "attributes") != null)
+                                    var smart = (await client.Nodes[node].Disks.Smart.Smart(disk.devpath as string)).Response.data;
+                                    if (ExistProperty(smart, "attributes") != null)
                                     {
                                         foreach (var attribute in smart.attributes)
                                         {
@@ -317,7 +332,7 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
 
             //foreach (var item in client.Storage.Index().ToEnumerable()) { SetGauge1(StorageDef, item); }
 
-            foreach (var item in client.Cluster.Resources.Resources().ToEnumerable())
+            foreach (var item in (await client.Cluster.Resources.Resources()).ToEnumerable())
             {
                 switch (item.type)
                 {
@@ -332,16 +347,16 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                         {
                             var node = item.node as string;
                             var vmId = item.vmid + "" as string;
-                            var data = (client.Nodes[node]
-                                              .Qemu[vmId]
-                                              .Monitor.Monitor("info balloon")
-                                              .Response.data as string)
+                            var data = ((await client.Nodes[node]
+                                                     .Qemu[vmId]
+                                                     .Monitor.Monitor("info balloon"))
+                                                     .Response.data as string)
                                               .Split(" ")
                                               .Skip(1)
                                               .Select(a => new
                                               {
                                                   Name = a.Split("=")[0],
-                                                  Value = double.Parse(a.Split("=")[1], formatinfo)
+                                                  Value = double.Parse(a.Split("=")[1], formatInfo)
                                               });
 
                             foreach (var gbi in _guestBalloonInfo)
@@ -360,17 +375,29 @@ namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api
                     default: break;
                 }
 
-                foreach (var item1 in _resourceInfo)
+                if (item.type == "qemu" || item.type == "lxc")
                 {
-                    var value = DynamicHelper.GetValue(item, item1.Key);
-                    if (value != null) { item1.Value.WithLabels(GetValues(item1.Value, item)).Set(value); }
+                    foreach (var item1 in _resourceInfo)
+                    {
+                        item1.Value.WithLabels(GetValues(item1.Value, item))
+                                   .Set(GetValue<double>(item, item1.Key));
+                    }
                 }
             }
         }
 
-        private static void SetGauge(Gauge gauge, dynamic values) => gauge.WithLabels(GetValues(gauge, values)).Set(1);
+        private static void SetGauge(Gauge gauge, dynamic values)
+            => gauge.WithLabels(GetValues(gauge, values)).Set(1);
 
         private static string[] GetValues(Gauge gauge, dynamic obj)
-            => gauge.LabelNames.Select(a => DynamicHelper.GetValue(obj, a) + "").Cast<string>().ToArray();
+            => gauge.LabelNames.Select(a => GetValue<object>(obj, a) + "")
+                               .Cast<string>()
+                               .ToArray();
+
+        private static bool ExistProperty(dynamic obj, string propertyName)
+        => ((IDictionary<string, object>)obj).ContainsKey(propertyName);
+
+        private static T GetValue<T>(object obj, string propertyName)
+            => (T)Convert.ChangeType(((IDictionary<string, object>)obj)[propertyName], typeof(T));
     }
 }
