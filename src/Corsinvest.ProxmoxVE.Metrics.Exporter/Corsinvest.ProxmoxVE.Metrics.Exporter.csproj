@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>cv4pve-metrics-exporter</AssemblyName>
     <Company>Corsinvest Srl</Company>
@@ -10,14 +10,17 @@
     <Product>Corsinvest for Proxmox VE Metrics Exporter</Product>
     <AssemblyTitle>Corsinvest for Proxmox VE Metrics Exporter</AssemblyTitle>
     <Description>Corsinvest for Proxmox VE Metrics Exporter</Description>
+    <RepositoryType>Github</RepositoryType>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Shell\Corsinvest.ProxmoxVE.Api.Shell.csproj" /> -->
-    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Shell" Version="7.3.4" />
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Shell" Version="7.3.7" />
 
     <!-- <ProjectReference Include="..\Corsinvest.ProxmoxVE.Metrics.Exporter.Api\Corsinvest.ProxmoxVE.Metrics.Exporter.Api.csproj" /> -->
-    <PackageReference Include="Corsinvest.ProxmoxVE.Metrics.Exporter.Api" Version="1.4.1" />
+    <PackageReference Include="Corsinvest.ProxmoxVE.Metrics.Exporter.Api" Version="1.4.2" />
   </ItemGroup>
 </Project>
