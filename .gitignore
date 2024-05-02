@@ -330,3 +330,5 @@ ASALocalRun/
 .mfractor/
 
 *.parm
+
+artifacts_nupkg/
