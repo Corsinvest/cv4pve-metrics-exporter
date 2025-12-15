@@ -1,0 +1,15 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    uses: Corsinvest/.github/.github/workflows/cv4pve-cli-publish.yml@main
+    with:
+      project-name: cv4pve-metrics-exporter
+      project-path: src/Corsinvest.ProxmoxVE.Metrics.Exporter/Corsinvest.ProxmoxVE.Metrics.Exporter.csproj
+      nuget-project-path: src/Corsinvest.ProxmoxVE.Metrics.Exporter.Api/Corsinvest.ProxmoxVE.Metrics.Exporter.Api.csproj
+      winget-id: Corsinvest.cv4pve.metrics-exporter
