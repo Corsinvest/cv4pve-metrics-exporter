@@ -1,631 +1,403 @@
-# cv4pve-metrics-export
+# cv4pve-metrics-exporter
 
-[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-metrics-exporter.svg)](LICENSE.md)
+```
+   ______                _                      __
+  / ____/___  __________(_)___ _   _____  _____/ /_
+ / /   / __ \/ ___/ ___/ / __ \ | / / _ \/ ___/ __/
+/ /___/ /_/ / /  (__  ) / / / / |/ /  __(__  ) /_
+\____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
+
+Metrics Exporter for Proxmox VE (Made in Italy)
+```
+
+[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-metrics-exporter.svg?style=flat-square)](LICENSE.md)
+[![Release](https://img.shields.io/github/release/Corsinvest/cv4pve-metrics-exporter.svg?style=flat-square)](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Corsinvest/cv4pve-metrics-exporter/total.svg?style=flat-square&logo=download)](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases)
+[![NuGet](https://img.shields.io/nuget/v/Corsinvest.ProxmoxVE.Metrics.Exporter.Api.svg?style=flat-square&logo=nuget)](https://www.nuget.org/packages/Corsinvest.ProxmoxVE.Metrics.Exporter.Api/)
+
+---
+
+## Quick Start
+
+```bash
+# Download latest release
+wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-linux-x64.zip
+unzip cv4pve-metrics-exporter-linux-x64.zip
+chmod +x cv4pve-metrics-exporter
+
+# Run Prometheus exporter
+./cv4pve-metrics-exporter --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD prometheus
+```
+
+---
+
+## Features
+
+### Core Capabilities
+
+#### **Performance & Reliability**
+- **Native C#** implementation
+- **Cross-platform** (Windows, Linux, macOS)
+- **API-based** operation (no root access required)
+- **Cluster support** with automatic resource resolution
+- **High availability** with multiple host support
+
+#### **Prometheus Integration**
+- **Full metrics export** for monitoring and alerting
+- **Customizable endpoint** (host, port, URL path)
+- **Rich metrics** covering nodes, VMs, containers, storage, and replication
+- **Label-based organization** for easy filtering and querying
+
+#### **Enterprise Features**
+- **API token** support (Proxmox VE 6.2+)
+- **SSL validation** options
+- **Multiple host** support for HA
+- **Error resilience** with comprehensive logging
+- **Service mode** for production deployments
+
+---
+
+## Installation
+
+### Linux Installation
+
+```bash
+# Check available releases and get the specific version number
+# Visit: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
+
+# Download specific version (replace VERSION with actual version like v1.5.0)
+wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-linux-x64.zip
+
+# Alternative: Get latest release URL programmatically
+LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-metrics-exporter/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
+wget "$LATEST_URL"
+
+# Extract and make executable
+unzip cv4pve-metrics-exporter-linux-x64.zip
+chmod +x cv4pve-metrics-exporter
+
+# Optional: Move to system path
+sudo mv cv4pve-metrics-exporter /usr/local/bin/
+```
+
+### Windows Installation
+
+```powershell
+# Check available releases at: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
+# Download specific version (replace VERSION with actual version)
+Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-win-x64.zip" -OutFile "cv4pve-metrics-exporter.zip"
+
+# Extract
+Expand-Archive cv4pve-metrics-exporter.zip -DestinationPath "C:\Tools\cv4pve-metrics-exporter"
+
+# Add to PATH (optional)
+$env:PATH += ";C:\Tools\cv4pve-metrics-exporter"
+```
+
+### macOS Installation
+
+```bash
+# Check available releases at: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
+# Download specific version (replace VERSION with actual version)
+wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-osx-x64.zip
+unzip cv4pve-metrics-exporter-osx-x64.zip
+chmod +x cv4pve-metrics-exporter
+
+# Move to applications
+sudo mv cv4pve-metrics-exporter /usr/local/bin/
+```
+
+---
+
+## Configuration
+
+### Command Line Options
 
 ```text
-     ______                _                      __
-    / ____/___  __________(_)___ _   _____  _____/ /_
-   / /   / __ \/ ___/ ___/ / __ \ | / / _ \/ ___/ __/
-  / /___/ /_/ / /  (__  ) / / / / |/ /  __(__  ) /_
-  \____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
-
-
-  Metrics Exporter for Proxmox VE                (Made in Italy)
-
-  cv4pve-metrics-exporter is a part of suite cv4pve.
-  For more information visit https://www.corsinvest.it/cv4pve
-
 Usage:
-  cv4pve-metrics-exporter [command] [options]
+  cv4pve-metrics-exporter [options] [command]
 
 Options:
-  --api-token <api-token>   Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
-  --username <username>     User name <username>@<realm>
-  --password <password>     The password. Specify 'file:path_file' to store password in file.
-  --validate-certificate    Validate SSL Certificate Proxmox VE node.
-  --host <host> (REQUIRED)  The host name host[:port],host1[:port],host2[:port]
-  --version                 Show version information
-  -?, -h, --help            Show help and usage information
+  --host <host> (REQUIRED)    The host name host[:port],host1[:port],host2[:port]
+  --username <username>       User name <username>@<realm>
+  --password <password>       The password. Specify 'file:path_file' to store password in file.
+  --api-token <api-token>     Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
+  --validate-certificate      Validate SSL Certificate Proxmox VE node.
+  --service-mode              Run as background service (runs until stopped, no Enter key)
+  --version                   Show version information
+  -?, -h, --help              Show help and usage information
 
 Commands:
   prometheus  Export for Prometheus
 ```
 
-## Copyright and License
+### Prometheus Command Options
 
-Copyright: Corsinvest Srl
-For licensing details please visit [LICENSE.md](LICENSE.md)
-
-## Commercial Support
-
-This software is part of a suite of tools called cv4pve-tools. If you want commercial support, visit the [site](https://www.cv4pve-tools.com)
-
-## Introduction
-
-Metrics Exporter for Proxmox VE.
-
-this software export metrics from Proxmox VE.
-
-## Main features
-
-* Completely written in C#
-* Use native api REST Proxmox VE (library C#)
-* Independent os (Windows, Linux, Macosx)
-* Installation unzip file extract binary
-* Not require installation in Proxmox VE
-* Execute out side Proxmox VE
-* Use Api token --api-token parameter
-* Execution with file parameter e.g. @FileParameter.parm
-* Validate certificate SSL, default not validate
-
-## Api token
-
-From version 6.2 of Proxmox VE is possible to use [Api token](https://pve.proxmox.com/pve-docs/pveum-plain.html).
-This feature permit execute Api without using user and password.
-If using **Privilege Separation** when create api token remember specify in permission.
-
-## Configuration
-
-E.g. install on linux 64
-
-Download last package e.g. Debian cv4pve-metrics-exporter-linux-x64.zip, on your os and install:
-
-```sh
-root@debian:~# unzip cv4pve-metrics-exporter-linux-x64.zip
+```text
+Options:
+  --http-host <http-host>    Http host (default: localhost)
+  --http-port <http-port>    Http port (default: 9221)
+  --http-url <http-url>      Http url (default: metrics/)
+  --prefix <prefix>          Prefix export (default: cv4pve)
 ```
 
-This tool need basically no configuration.
+### Usage Examples
 
-```sh
-root@debian:~# cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=fagiano prometheus
+```bash
+# Basic usage with username/password
+cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD prometheus
 
-Corsinvest for Proxmox VE
-Cluster: 192.168.0.100 - User: root
-Exporter Prometheus: http://localhost:9221/metrics/
-Export Node Disk Info: False
+# Using API token (recommended)
+cv4pve-metrics-exporter --host=192.168.0.100 --api-token=metrics-user@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx prometheus
+
+# Multiple hosts for HA
+cv4pve-metrics-exporter --host=pve1.local:8006,pve2.local:8006,pve3.local:8006 --username=root@pam --password=YOUR_PASSWORD prometheus
+
+# Custom Prometheus endpoint
+cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD prometheus --http-host=0.0.0.0 --http-port=9090 --http-url=pve-metrics/
+
+# Using password from file
+echo "YOUR_PASSWORD" > /etc/cv4pve/password
+cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=file:/etc/cv4pve/password prometheus
+
+# With SSL certificate validation
+cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD --validate-certificate prometheus
 ```
 
-## Prometheus
+---
 
-For Prometheus are available more parameters:
+## Deployment Options
 
-```txt
---http-host       Http host (default: localhost)
---http-port       Http port (default: 9221)
---http-url        Http url (default: metrics/)
---prefix          Prefix export (default: cv4pve)
---node-disk-info  Export disk info (disk,wearout,smart)
-                  Require more time
+### Console Mode (Default)
+
+Run the exporter in interactive mode. The exporter will wait for you to press Enter to stop.
+
+```bash
+./cv4pve-metrics-exporter --host=pve.local --username=root@pam --password=YOUR_PASSWORD prometheus
+# Metrics exporter is running. Press Enter to stop...
 ```
 
-## Execution with file parameter
+**Best for:** Development, testing, and debugging.
 
-Is possible execute with file parameter
+### Service Mode
 
-```sh
-root@debian:~# cv4pve-metrics-exporter @FileParameter.parm
+Run the exporter as a background service without console interaction. The exporter will continue running until stopped with Ctrl+C.
+
+```bash
+./cv4pve-metrics-exporter --host=pve.local --username=root@pam --password=YOUR_PASSWORD --service-mode prometheus
+# Exporter is running in background. Press Ctrl+C to stop.
 ```
 
-File **FileParameter.parm**
+**Best for:** Production environments where you want the exporter to run continuously.
 
-```txt
---host=192.168.0.100
---username=root@pam
---password=fagiano
-prometheus
+### Windows Service with NSSM
+
+For Windows systems, use NSSM (Non-Sucking Service Manager) to run the exporter as a proper Windows service.
+
+```powershell
+# Download NSSM: https://nssm.cc/download
+# Install the service
+nssm install cv4pve-metrics-exporter "C:\Tools\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe" `
+  --host=pve.local `
+  --api-token=metrics@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx `
+  --service-mode `
+  prometheus `
+  --http-host=0.0.0.0
+
+# Start the service
+nssm start cv4pve-metrics-exporter
+
+# View logs
+nssm tail cv4pve-metrics-exporter
+
+# Stop the service
+nssm stop cv4pve-metrics-exporter
+
+# Uninstall the service
+nssm remove cv4pve-metrics-exporter confirm
 ```
 
-## Prometeus Exported Metrics
+### Linux Systemd Service
 
-```txt
-# HELP cv4pve_up Proxmox VE Node/Storage/VM/CT-Status is online/running/available
-# TYPE cv4pve_up gauge
-cv4pve_up{Id="cluster/ccl01"} 1
-cv4pve_up{Id="node/host2"} 1
-cv4pve_up{Id="node/host1"} 1
-cv4pve_up{Id="lxc/100"} 1
-cv4pve_up{Id="qemu/1000"} 1
-cv4pve_up{Id="qemu/1006"} 1
-cv4pve_up{Id="qemu/1007"} 1
-cv4pve_up{Id="lxc/101"} 1
-cv4pve_up{Id="qemu/1010"} 0
-cv4pve_up{Id="qemu/1011"} 0
-cv4pve_up{Id="qemu/1012"} 1
-cv4pve_up{Id="qemu/1013"} 0
-cv4pve_up{Id="lxc/1014"} 1
-cv4pve_up{Id="qemu/102"} 1
-cv4pve_up{Id="qemu/1020"} 1
-cv4pve_up{Id="lxc/103"} 1
-cv4pve_up{Id="qemu/1030"} 1
-cv4pve_up{Id="lxc/104"} 0
-cv4pve_up{Id="lxc/105"} 0
-cv4pve_up{Id="qemu/1104"} 1
-cv4pve_up{Id="qemu/1106"} 1
-cv4pve_up{Id="qemu/1107"} 1
-cv4pve_up{Id="qemu/999"} 1
-cv4pve_up{Id="storage/host2/local"} 1
-cv4pve_up{Id="storage/host1/local"} 1
-cv4pve_up{Id="storage/host2/local-zfs"} 1
-cv4pve_up{Id="storage/host1/local-zfs"} 1
-cv4pve_up{Id="storage/host2/datapool"} 1
-cv4pve_up{Id="storage/host1/datapool"} 1
-cv4pve_up{Id="storage/host2/storetest"} 1
-cv4pve_up{Id="storage/host1/storetest"} 1
-cv4pve_up{Id="storage/host2/stor2"} 1
-cv4pve_up{Id="storage/host1/stor2"} 1
-# HELP cv4pve_node_info Node info
-# TYPE cv4pve_node_info gauge
-cv4pve_node_info{IpAddress="192.168.0.2",Level="",Local="1",Name="host2",NodeId="1",Version="8.2.0"} 1
-cv4pve_node_info{IpAddress="192.168.0.1",Level="",Local="0",Name="host1",NodeId="2",Version="8.2.0"} 1
-# HELP cv4pve_node_disk_Wearout Node disk wearout
-# TYPE cv4pve_node_disk_Wearout gauge
-cv4pve_node_disk_Wearout{Serial="500............",Node="host2",Type="unknown",DevPath="/dev/sda"} 0
-cv4pve_node_disk_Wearout{Serial="500............",Node="host2",Type="unknown",DevPath="/dev/sdb"} 0
-cv4pve_node_disk_Wearout{Serial="500............",Node="host2",Type="unknown",DevPath="/dev/sdc"} 0
-cv4pve_node_disk_Wearout{Serial="500............",Node="host2",Type="unknown",DevPath="/dev/sdd"} 0
-cv4pve_node_disk_Wearout{Serial="PHD............",Node="host2",Type="ssd",DevPath="/dev/sde"} 1
-cv4pve_node_disk_Wearout{Serial="PHD............",Node="host2",Type="ssd",DevPath="/dev/sdf"} 1
-cv4pve_node_disk_Wearout{Serial="BTY............",Node="host1",Type="ssd",DevPath="/dev/sda"} 1
-cv4pve_node_disk_Wearout{Serial="BTY............",Node="host1",Type="ssd",DevPath="/dev/sdb"} 1
-cv4pve_node_disk_Wearout{Serial="BTY............",Node="host1",Type="ssd",DevPath="/dev/sdc"} 1
-cv4pve_node_disk_Wearout{Serial="BTY............",Node="host1",Type="ssd",DevPath="/dev/sdd"} 1
-cv4pve_node_disk_Wearout{Serial="PHD............",Node="host1",Type="ssd",DevPath="/dev/sde"} 1
-cv4pve_node_disk_Wearout{Serial="PHD............",Node="host1",Type="ssd",DevPath="/dev/sdf"} 1
-# HELP cv4pve_node_disk_health Node disk health
-# TYPE cv4pve_node_disk_health gauge
-cv4pve_node_disk_health{Serial="PHD.............",Node="host2",Type="ssd",DevPath="/dev/sdf"} 99
-cv4pve_node_disk_health{Serial="PHD.............",Node="host2",Type="ssd",DevPath="/dev/sde"} 99
-cv4pve_node_disk_health{Serial="BTY.............",Node="host1",Type="ssd",DevPath="/dev/sda"} 100
-cv4pve_node_disk_health{Serial="BTY.............",Node="host1",Type="ssd",DevPath="/dev/sdb"} 100
-cv4pve_node_disk_health{Serial="BTY.............",Node="host1",Type="ssd",DevPath="/dev/sdc"} 100
-cv4pve_node_disk_health{Serial="BTY.............",Node="host1",Type="ssd",DevPath="/dev/sdd"} 100
-cv4pve_node_disk_health{Serial="PHD.............",Node="host1",Type="ssd",DevPath="/dev/sde"} 100
-cv4pve_node_disk_health{Serial="PHD.............",Node="host1",Type="ssd",DevPath="/dev/sdf"} 100
-# HELP cv4pve_cluster_info Cluster info
-# TYPE cv4pve_cluster_info gauge
-cv4pve_cluster_info{Id="cluster",Nodes="2",Quorate="1",Version="3"} 1
-# HELP cv4pve_guest_info VM/CT info
-# TYPE cv4pve_guest_info gauge
-cv4pve_guest_info{Id="lxc/100",VmId="100",Node="host2",Name="vps001",Type="lxc",Status="running",Tags="corsinvest;cct"} 1
-cv4pve_guest_info{Id="qemu/1000",VmId="1000",Node="host1",Name="vps002",Type="qemu",Status="running",Tags="corsinvest;test"} 1
-cv4pve_guest_info{Id="qemu/1006",VmId="1006",Node="host1",Name="DomainCtrl",Type="qemu",Status="running",Tags="corsinvest;domain-controller"} 1
-cv4pve_guest_info{Id="qemu/1007",VmId="1007",Node="host1",Name="DomainCtrl2",Type="qemu",Status="running",Tags="corsinvest;domain-controller"} 1
-cv4pve_guest_info{Id="lxc/101",VmId="101",Node="host2",Name="vps004",Type="lxc",Status="running",Tags="corsinvest;backup"} 1
-cv4pve_guest_info{Id="qemu/1010",VmId="1010",Node="host1",Name="vps005",Type="qemu",Status="stopped",Tags="sodeos"} 1
-cv4pve_guest_info{Id="qemu/1011",VmId="1011",Node="host1",Name="vps006",Type="qemu",Status="stopped",Tags="corsinvest"} 1
-cv4pve_guest_info{Id="qemu/1012",VmId="1012",Node="host2",Name="vps007",Type="qemu",Status="running",Tags="corsinvest"} 1
-cv4pve_guest_info{Id="qemu/1013",VmId="1013",Node="host1",Name="vps008",Type="qemu",Status="stopped",Tags="corsinvest"} 1
-cv4pve_guest_info{Id="lxc/1014",VmId="1014",Node="host1",Name="vps009",Type="lxc",Status="running",Tags=""} 1
-cv4pve_guest_info{Id="qemu/102",VmId="102",Node="host2",Name="vps010",Type="qemu",Status="running",Tags="corsinvest;firewall"} 1
-cv4pve_guest_info{Id="qemu/1020",VmId="1020",Node="host1",Name="vps011",Type="qemu",Status="running",Tags="test1"} 1
-cv4pve_guest_info{Id="lxc/103",VmId="103",Node="host2",Name="vps012",Type="lxc",Status="running",Tags="cv4pve-admin"} 1
-cv4pve_guest_info{Id="qemu/1030",VmId="1030",Node="host1",Name="vps013",Type="qemu",Status="running",Tags=""} 1
-cv4pve_guest_info{Id="lxc/104",VmId="104",Node="host2",Name="vps014",Type="lxc",Status="stopped",Tags=""} 1
-cv4pve_guest_info{Id="lxc/105",VmId="105",Node="host1",Name="test",Type="lxc",Status="stopped",Tags=""} 1
-cv4pve_guest_info{Id="qemu/1104",VmId="1104",Node="host1",Name="vps015",Type="qemu",Status="running",Tags="corsinvest"} 1
-cv4pve_guest_info{Id="qemu/1106",VmId="1106",Node="host1",Name="vps016",Type="qemu",Status="running",Tags="corsinvest-srl"} 1
-cv4pve_guest_info{Id="qemu/1107",VmId="1107",Node="host1",Name="vps017",Type="qemu",Status="running",Tags="corsinvest"} 1
-cv4pve_guest_info{Id="qemu/999",VmId="999",Node="host2",Name="vps018",Type="qemu",Status="running",Tags=""} 1
-# HELP cv4pve_onboot_status VM/CT config onboot value
-# TYPE cv4pve_onboot_status gauge
-cv4pve_onboot_status 0
-# HELP cv4pve_storage_info Storage info
-# TYPE cv4pve_storage_info gauge
-cv4pve_storage_info{Id="storage/host2/local",Node="host2",Storage="local",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host1/local",Node="host1",Storage="local",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host2/local-zfs",Node="host2",Storage="local-zfs",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host1/local-zfs",Node="host1",Storage="local-zfs",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host2/datapool",Node="host2",Storage="datapool",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host1/datapool",Node="host1",Storage="datapool",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host2/storetest",Node="host2",Storage="storetest",Shared="True"} 1
-cv4pve_storage_info{Id="storage/host1/storetest",Node="host1",Storage="storetest",Shared="True"} 1
-cv4pve_storage_info{Id="storage/host2/stor2",Node="host2",Storage="stor2",Shared="False"} 1
-cv4pve_storage_info{Id="storage/host1/stor2",Node="host1",Storage="stor2",Shared="False"} 1
-# HELP cv4pve_host_memory_usage_bytes Host memory usage
-# TYPE cv4pve_host_memory_usage_bytes gauge
-cv4pve_host_memory_usage_bytes{Id="lxc/100"} 0.001......
-cv4pve_host_memory_usage_bytes{Id="qemu/1000"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/1006"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/1007"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="lxc/101"} 0.016......
-cv4pve_host_memory_usage_bytes{Id="qemu/1010"} 0
-cv4pve_host_memory_usage_bytes{Id="qemu/1011"} 0
-cv4pve_host_memory_usage_bytes{Id="qemu/1012"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/1013"} 0
-cv4pve_host_memory_usage_bytes{Id="lxc/1014"} 0.00......
-cv4pve_host_memory_usage_bytes{Id="qemu/102"} 0.02......
-cv4pve_host_memory_usage_bytes{Id="qemu/1020"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="lxc/103"} 0.003......
-cv4pve_host_memory_usage_bytes{Id="qemu/1030"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="lxc/104"} 0
-cv4pve_host_memory_usage_bytes{Id="lxc/105"} 0
-cv4pve_host_memory_usage_bytes{Id="qemu/1104"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/1106"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/1107"} 0.0......
-cv4pve_host_memory_usage_bytes{Id="qemu/999"} 0.00......
-# HELP cv4pve_disk_size_bytes Size of storage device
-# TYPE cv4pve_disk_size_bytes gauge
-cv4pve_disk_size_bytes{Id="lxc/100"} 85899......
-cv4pve_disk_size_bytes{Id="qemu/1000"} 536......
-cv4pve_disk_size_bytes{Id="qemu/1006"} 687......
-cv4pve_disk_size_bytes{Id="qemu/1007"} 687......
-cv4pve_disk_size_bytes{Id="lxc/101"} 21474......
-cv4pve_disk_size_bytes{Id="qemu/1010"} 880......
-cv4pve_disk_size_bytes{Id="qemu/1011"} 322......
-cv4pve_disk_size_bytes{Id="qemu/1012"} 590......
-cv4pve_disk_size_bytes{Id="qemu/1013"} 536......
-cv4pve_disk_size_bytes{Id="lxc/1014"} 1073......
-cv4pve_disk_size_bytes{Id="qemu/102"} 5368......
-cv4pve_disk_size_bytes{Id="qemu/1020"} 880......
-cv4pve_disk_size_bytes{Id="lxc/103"} 85899......
-cv4pve_disk_size_bytes{Id="qemu/1030"} 343......
-cv4pve_disk_size_bytes{Id="lxc/104"} 21474......
-cv4pve_disk_size_bytes{Id="lxc/105"} 85899......
-cv4pve_disk_size_bytes{Id="qemu/1104"} 107......
-cv4pve_disk_size_bytes{Id="qemu/1106"} 137......
-cv4pve_disk_size_bytes{Id="qemu/1107"} 214......
-cv4pve_disk_size_bytes{Id="qemu/999"} 6871......
-# HELP cv4pve_disk_usage_bytes Disk usage in bytes
-# TYPE cv4pve_disk_usage_bytes gauge
-cv4pve_disk_usage_bytes{Id="lxc/100"} 4000......
-cv4pve_disk_usage_bytes{Id="qemu/1000"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1006"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1007"} 0
-cv4pve_disk_usage_bytes{Id="lxc/101"} 5293......
-cv4pve_disk_usage_bytes{Id="qemu/1010"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1011"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1012"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1013"} 0
-cv4pve_disk_usage_bytes{Id="lxc/1014"} 2218......
-cv4pve_disk_usage_bytes{Id="qemu/102"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1020"} 0
-cv4pve_disk_usage_bytes{Id="lxc/103"} 212......
-cv4pve_disk_usage_bytes{Id="qemu/1030"} 0
-cv4pve_disk_usage_bytes{Id="lxc/104"} 0
-cv4pve_disk_usage_bytes{Id="lxc/105"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1104"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1106"} 0
-cv4pve_disk_usage_bytes{Id="qemu/1107"} 0
-cv4pve_disk_usage_bytes{Id="qemu/999"} 0
-# HELP cv4pve_memory_size_bytes Size of memory
-# TYPE cv4pve_memory_size_bytes gauge
-cv4pve_memory_size_bytes{Id="lxc/100"} 42949......
-cv4pve_memory_size_bytes{Id="qemu/1000"} 858......
-cv4pve_memory_size_bytes{Id="qemu/1006"} 858......
-cv4pve_memory_size_bytes{Id="qemu/1007"} 858......
-cv4pve_memory_size_bytes{Id="lxc/101"} 42949......
-cv4pve_memory_size_bytes{Id="qemu/1010"} 429......
-cv4pve_memory_size_bytes{Id="qemu/1011"} 322......
-cv4pve_memory_size_bytes{Id="qemu/1012"} 429......
-cv4pve_memory_size_bytes{Id="qemu/1013"} 429......
-cv4pve_memory_size_bytes{Id="lxc/1014"} 1073......
-cv4pve_memory_size_bytes{Id="qemu/102"} 8589......
-cv4pve_memory_size_bytes{Id="qemu/1020"} 644......
-cv4pve_memory_size_bytes{Id="lxc/103"} 42949......
-cv4pve_memory_size_bytes{Id="qemu/1030"} 644......
-cv4pve_memory_size_bytes{Id="lxc/104"} 85899......
-cv4pve_memory_size_bytes{Id="lxc/105"} 10737......
-cv4pve_memory_size_bytes{Id="qemu/1104"} 644......
-cv4pve_memory_size_bytes{Id="qemu/1106"} 858......
-cv4pve_memory_size_bytes{Id="qemu/1107"} 171......
-cv4pve_memory_size_bytes{Id="qemu/999"} 1717......
-# HELP cv4pve_memory_usage_bytes Memory usage in bytes
-# TYPE cv4pve_memory_usage_bytes gauge
-cv4pve_memory_usage_bytes{Id="lxc/100"} 2484......
-cv4pve_memory_usage_bytes{Id="qemu/1000"} 56......
-cv4pve_memory_usage_bytes{Id="qemu/1006"} 60......
-cv4pve_memory_usage_bytes{Id="qemu/1007"} 20......
-cv4pve_memory_usage_bytes{Id="lxc/101"} 2274......
-cv4pve_memory_usage_bytes{Id="qemu/1010"} 0
-cv4pve_memory_usage_bytes{Id="qemu/1011"} 0
-cv4pve_memory_usage_bytes{Id="qemu/1012"} 2951......
-cv4pve_memory_usage_bytes{Id="qemu/1013"} 0
-cv4pve_memory_usage_bytes{Id="lxc/1014"} 1257......
-cv4pve_memory_usage_bytes{Id="qemu/102"} 3816......
-cv4pve_memory_usage_bytes{Id="qemu/1020"} 401......
-cv4pve_memory_usage_bytes{Id="lxc/103"} 42657......
-cv4pve_memory_usage_bytes{Id="qemu/1030"} 600......
-cv4pve_memory_usage_bytes{Id="lxc/104"} 0
-cv4pve_memory_usage_bytes{Id="lxc/105"} 0
-cv4pve_memory_usage_bytes{Id="qemu/1104"} 6070......
-cv4pve_memory_usage_bytes{Id="qemu/1106"} 7003......
-cv4pve_memory_usage_bytes{Id="qemu/1107"} 7670......
-cv4pve_memory_usage_bytes{Id="qemu/999"} 84389......
-# HELP cv4pve_network_transmit_bytes Number of bytes transmitted over the network
-# TYPE cv4pve_network_transmit_bytes gauge
-cv4pve_network_transmit_bytes{Id="lxc/100"} 33299......
-cv4pve_network_transmit_bytes{Id="qemu/1000"} 788......
-cv4pve_network_transmit_bytes{Id="qemu/1006"} 700......
-cv4pve_network_transmit_bytes{Id="qemu/1007"} 683......
-cv4pve_network_transmit_bytes{Id="lxc/101"} 20036......
-cv4pve_network_transmit_bytes{Id="qemu/1010"} 0
-cv4pve_network_transmit_bytes{Id="qemu/1011"} 0
-cv4pve_network_transmit_bytes{Id="qemu/1012"} 18446......
-cv4pve_network_transmit_bytes{Id="qemu/1013"} 0
-cv4pve_network_transmit_bytes{Id="lxc/1014"} 10390......
-cv4pve_network_transmit_bytes{Id="qemu/102"} 26254......
-cv4pve_network_transmit_bytes{Id="qemu/1020"} 2002......
-cv4pve_network_transmit_bytes{Id="lxc/103"} 180301......
-cv4pve_network_transmit_bytes{Id="qemu/1030"} 4183......
-cv4pve_network_transmit_bytes{Id="lxc/104"} 0
-cv4pve_network_transmit_bytes{Id="lxc/105"} 0
-cv4pve_network_transmit_bytes{Id="qemu/1104"} 1023......
-cv4pve_network_transmit_bytes{Id="qemu/1106"} 3425......
-cv4pve_network_transmit_bytes{Id="qemu/1107"} 7879......
-cv4pve_network_transmit_bytes{Id="qemu/999"} 72839......
-# HELP cv4pve_network_receive_bytes Number of bytes received over the network
-# TYPE cv4pve_network_receive_bytes gauge
-cv4pve_network_receive_bytes{Id="lxc/100"} 19191......
-cv4pve_network_receive_bytes{Id="qemu/1000"} 785......
-cv4pve_network_receive_bytes{Id="qemu/1006"} 119......
-cv4pve_network_receive_bytes{Id="qemu/1007"} 280......
-cv4pve_network_receive_bytes{Id="lxc/101"} 12875......
-cv4pve_network_receive_bytes{Id="qemu/1010"} 0
-cv4pve_network_receive_bytes{Id="qemu/1011"} 0
-cv4pve_network_receive_bytes{Id="qemu/1012"} 134......
-cv4pve_network_receive_bytes{Id="qemu/1013"} 0
-cv4pve_network_receive_bytes{Id="lxc/1014"} 7951......
-cv4pve_network_receive_bytes{Id="qemu/102"} 2612......
-cv4pve_network_receive_bytes{Id="qemu/1020"} 470......
-cv4pve_network_receive_bytes{Id="lxc/103"} 56618......
-cv4pve_network_receive_bytes{Id="qemu/1030"} 184......
-cv4pve_network_receive_bytes{Id="lxc/104"} 0
-cv4pve_network_receive_bytes{Id="lxc/105"} 0
-cv4pve_network_receive_bytes{Id="qemu/1104"} 231......
-cv4pve_network_receive_bytes{Id="qemu/1106"} 163......
-cv4pve_network_receive_bytes{Id="qemu/1107"} 879......
-cv4pve_network_receive_bytes{Id="qemu/999"} 3036......
-# HELP cv4pve_disk_write_bytes Number of bytes written to storage
-# TYPE cv4pve_disk_write_bytes gauge
-cv4pve_disk_write_bytes{Id="lxc/100"} 2195......
-cv4pve_disk_write_bytes{Id="qemu/1000"} 11......
-cv4pve_disk_write_bytes{Id="qemu/1006"} 52......
-cv4pve_disk_write_bytes{Id="qemu/1007"} 58......
-cv4pve_disk_write_bytes{Id="lxc/101"} 2237......
-cv4pve_disk_write_bytes{Id="qemu/1010"} 0
-cv4pve_disk_write_bytes{Id="qemu/1011"} 0
-cv4pve_disk_write_bytes{Id="qemu/1012"} 30......
-cv4pve_disk_write_bytes{Id="qemu/1013"} 0
-cv4pve_disk_write_bytes{Id="lxc/1014"} 368......
-cv4pve_disk_write_bytes{Id="qemu/102"} 340......
-cv4pve_disk_write_bytes{Id="qemu/1020"} 66......
-cv4pve_disk_write_bytes{Id="lxc/103"} 1274......
-cv4pve_disk_write_bytes{Id="qemu/1030"} 12......
-cv4pve_disk_write_bytes{Id="lxc/104"} 0
-cv4pve_disk_write_bytes{Id="lxc/105"} 0
-cv4pve_disk_write_bytes{Id="qemu/1104"} 14......
-cv4pve_disk_write_bytes{Id="qemu/1106"} 13......
-cv4pve_disk_write_bytes{Id="qemu/1107"} 28......
-cv4pve_disk_write_bytes{Id="qemu/999"} 216......
-# HELP cv4pve_disk_read_bytes Number of bytes read from storage
-# TYPE cv4pve_disk_read_bytes gauge
-cv4pve_disk_read_bytes{Id="lxc/100"} 23505......
-cv4pve_disk_read_bytes{Id="qemu/1000"} 541......
-cv4pve_disk_read_bytes{Id="qemu/1006"} 679......
-cv4pve_disk_read_bytes{Id="qemu/1007"} 249......
-cv4pve_disk_read_bytes{Id="lxc/101"} 14246......
-cv4pve_disk_read_bytes{Id="qemu/1010"} 0
-cv4pve_disk_read_bytes{Id="qemu/1011"} 0
-cv4pve_disk_read_bytes{Id="qemu/1012"} 609......
-cv4pve_disk_read_bytes{Id="qemu/1013"} 0
-cv4pve_disk_read_bytes{Id="lxc/1014"} 4096......
-cv4pve_disk_read_bytes{Id="qemu/102"} 3383......
-cv4pve_disk_read_bytes{Id="qemu/1020"} 472......
-cv4pve_disk_read_bytes{Id="lxc/103"} 59317......
-cv4pve_disk_read_bytes{Id="qemu/1030"} 103......
-cv4pve_disk_read_bytes{Id="lxc/104"} 0
-cv4pve_disk_read_bytes{Id="lxc/105"} 0
-cv4pve_disk_read_bytes{Id="qemu/1104"} 717......
-cv4pve_disk_read_bytes{Id="qemu/1106"} 127......
-cv4pve_disk_read_bytes{Id="qemu/1107"} 135......
-cv4pve_disk_read_bytes{Id="qemu/999"} 6400......
-# HELP cv4pve_cpu_usage_ratio CPU usage (value between 0.0 and cv4pve_cpu_usage_limit)
-# TYPE cv4pve_cpu_usage_ratio gauge
-cv4pve_cpu_usage_ratio{Id="lxc/100"} 0.0115......
-cv4pve_cpu_usage_ratio{Id="qemu/1000"} 0.01......
-cv4pve_cpu_usage_ratio{Id="qemu/1006"} 0.01......
-cv4pve_cpu_usage_ratio{Id="qemu/1007"} 0.00......
-cv4pve_cpu_usage_ratio{Id="lxc/101"} 0.0535......
-cv4pve_cpu_usage_ratio{Id="qemu/1010"} 0
-cv4pve_cpu_usage_ratio{Id="qemu/1011"} 0
-cv4pve_cpu_usage_ratio{Id="qemu/1012"} 0.01......
-cv4pve_cpu_usage_ratio{Id="qemu/1013"} 0
-cv4pve_cpu_usage_ratio{Id="lxc/1014"} 0.000......
-cv4pve_cpu_usage_ratio{Id="qemu/102"} 0.038......
-cv4pve_cpu_usage_ratio{Id="qemu/1020"} 0.08......
-cv4pve_cpu_usage_ratio{Id="lxc/103"} 0.0011......
-cv4pve_cpu_usage_ratio{Id="qemu/1030"} 0.69......
-cv4pve_cpu_usage_ratio{Id="lxc/104"} 0
-cv4pve_cpu_usage_ratio{Id="lxc/105"} 0
-cv4pve_cpu_usage_ratio{Id="qemu/1104"} 0.11......
-cv4pve_cpu_usage_ratio{Id="qemu/1106"} 0.01......
-cv4pve_cpu_usage_ratio{Id="qemu/1107"} 0.17......
-cv4pve_cpu_usage_ratio{Id="qemu/999"} 0.015......
-# HELP cv4pve_cpu_usage_limit Maximum allowed CPU usage
-# TYPE cv4pve_cpu_usage_limit gauge
-cv4pve_cpu_usage_limit{Id="lxc/100"} 2
-cv4pve_cpu_usage_limit{Id="qemu/1000"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1006"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1007"} 4
-cv4pve_cpu_usage_limit{Id="lxc/101"} 2
-cv4pve_cpu_usage_limit{Id="qemu/1010"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1011"} 1
-cv4pve_cpu_usage_limit{Id="qemu/1012"} 2
-cv4pve_cpu_usage_limit{Id="qemu/1013"} 2
-cv4pve_cpu_usage_limit{Id="lxc/1014"} 1
-cv4pve_cpu_usage_limit{Id="qemu/102"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1020"} 4
-cv4pve_cpu_usage_limit{Id="lxc/103"} 2
-cv4pve_cpu_usage_limit{Id="qemu/1030"} 4
-cv4pve_cpu_usage_limit{Id="lxc/104"} 4
-cv4pve_cpu_usage_limit{Id="lxc/105"} 1
-cv4pve_cpu_usage_limit{Id="qemu/1104"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1106"} 4
-cv4pve_cpu_usage_limit{Id="qemu/1107"} 4
-cv4pve_cpu_usage_limit{Id="qemu/999"} 4
-# HELP cv4pve_uptime_seconds Number of seconds since the last boot
-# TYPE cv4pve_uptime_seconds gauge
-cv4pve_uptime_seconds{Id="lxc/100"} 386......
-cv4pve_uptime_seconds{Id="qemu/1000"} 1......
-cv4pve_uptime_seconds{Id="qemu/1006"} 7......
-cv4pve_uptime_seconds{Id="qemu/1007"} 6......
-cv4pve_uptime_seconds{Id="lxc/101"} 476......
-cv4pve_uptime_seconds{Id="qemu/1010"} 0......
-cv4pve_uptime_seconds{Id="qemu/1011"} 0......
-cv4pve_uptime_seconds{Id="qemu/1012"} 1......
-cv4pve_uptime_seconds{Id="qemu/1013"} 0......
-cv4pve_uptime_seconds{Id="lxc/1014"} 62......
-cv4pve_uptime_seconds{Id="qemu/102"} 12......
-cv4pve_uptime_seconds{Id="qemu/1020"} 6......
-cv4pve_uptime_seconds{Id="lxc/103"} 115......
-cv4pve_uptime_seconds{Id="qemu/1030"} 7......
-cv4pve_uptime_seconds{Id="lxc/104"} 0
-cv4pve_uptime_seconds{Id="lxc/105"} 0
-cv4pve_uptime_seconds{Id="qemu/1104"} 1......
-cv4pve_uptime_seconds{Id="qemu/1106"} 8......
-cv4pve_uptime_seconds{Id="qemu/1107"} 2......
-cv4pve_uptime_seconds{Id="qemu/999"} 41......
-# HELP cv4pve_balloon_actual_bytes Balloon memory actual
-# TYPE cv4pve_balloon_actual_bytes gauge
-cv4pve_balloon_actual_bytes{Id="qemu/1000",VmId="1000"} 858......
-cv4pve_balloon_actual_bytes{Id="qemu/1006",VmId="1006"} 858......
-cv4pve_balloon_actual_bytes{Id="qemu/1007",VmId="1007"} 858......
-cv4pve_balloon_actual_bytes{Id="qemu/1012",VmId="1012"} 429......
-cv4pve_balloon_actual_bytes{Id="qemu/102",VmId="102"} 85899......
-cv4pve_balloon_actual_bytes{Id="qemu/1020",VmId="1020"} 644......
-cv4pve_balloon_actual_bytes{Id="qemu/1030",VmId="1030"} 644......
-cv4pve_balloon_actual_bytes{Id="qemu/1104",VmId="1104"} 644......
-cv4pve_balloon_actual_bytes{Id="qemu/1106",VmId="1106"} 858......
-cv4pve_balloon_actual_bytes{Id="qemu/1107",VmId="1107"} 171......
-cv4pve_balloon_actual_bytes{Id="qemu/999",VmId="999"} 17179......
-# HELP cv4pve_balloon_max_mem_bytes Balloon memory max
-# TYPE cv4pve_balloon_max_mem_bytes gauge
-cv4pve_balloon_max_mem_bytes{Id="qemu/1000",VmId="1000"} 85......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1006",VmId="1006"} 85......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1007",VmId="1007"} 85......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1012",VmId="1012"} 42......
-cv4pve_balloon_max_mem_bytes{Id="qemu/102",VmId="102"} 8589......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1020",VmId="1020"} 64......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1030",VmId="1030"} 64......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1104",VmId="1104"} 64......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1106",VmId="1106"} 85......
-cv4pve_balloon_max_mem_bytes{Id="qemu/1107",VmId="1107"} 17......
-cv4pve_balloon_max_mem_bytes{Id="qemu/999",VmId="999"} 1717......
-# HELP cv4pve_balloon_last_update_bytes Balloon memory last update
-# TYPE cv4pve_balloon_last_update_bytes gauge
-cv4pve_balloon_last_update_bytes{Id="qemu/1006",VmId="1006"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1007",VmId="1007"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1012",VmId="1012"} 178......
-cv4pve_balloon_last_update_bytes{Id="qemu/1020",VmId="1020"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1030",VmId="1030"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1104",VmId="1104"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1106",VmId="1106"} 179......
-cv4pve_balloon_last_update_bytes{Id="qemu/1107",VmId="1107"} 179......
-# HELP cv4pve_node_load_avg1 Node load avg1
-# TYPE cv4pve_node_load_avg1 gauge
-cv4pve_node_load_avg1{Name="host2"} 0.49
-cv4pve_node_load_avg1{Name="host1"} 4.38
-# HELP cv4pve_node_load_avg5 Node load avg5
-# TYPE cv4pve_node_load_avg5 gauge
-cv4pve_node_load_avg5{Name="host2"} 0.68
-cv4pve_node_load_avg5{Name="host1"} 4.33
-# HELP cv4pve_node_load_avg15 Node load avg15
-# TYPE cv4pve_node_load_avg15 gauge
-cv4pve_node_load_avg15{Name="host2"} 0.8
-cv4pve_node_load_avg15{Name="host1"} 4.48
-# HELP cv4pve_node_uptime_seconds Number of seconds since the last boot
-# TYPE cv4pve_node_uptime_seconds gauge
-cv4pve_node_uptime_seconds{Name="host2"} 12......
-cv4pve_node_uptime_seconds{Name="host1"} 12......
-# HELP cv4pve_node_memory_used_bytes Node memory used
-# TYPE cv4pve_node_memory_used_bytes gauge
-cv4pve_node_memory_used_bytes{Name="host2"} 927......
-cv4pve_node_memory_used_bytes{Name="host1"} 207......
-# HELP cv4pve_node_memory_total_bytes Node memory total
-# TYPE cv4pve_node_memory_total_bytes gauge
-cv4pve_node_memory_total_bytes{Name="host2"} 134......
-cv4pve_node_memory_total_bytes{Name="host1"} 270......
-# HELP cv4pve_node_memory_free_bytes Node memory free
-# TYPE cv4pve_node_memory_free_bytes gauge
-cv4pve_node_memory_free_bytes{Name="host2"} 420......
-cv4pve_node_memory_free_bytes{Name="host1"} 629......
-# HELP cv4pve_node_swap_used_bytes Node swap used
-# TYPE cv4pve_node_swap_used_bytes gauge
-cv4pve_node_swap_used_bytes{Name="host2"} 805......
-cv4pve_node_swap_used_bytes{Name="host1"} 125......
-# HELP cv4pve_node_swap_total_bytes Node swap total
-# TYPE cv4pve_node_swap_total_bytes gauge
-cv4pve_node_swap_total_bytes{Name="host2"} 687......
-cv4pve_node_swap_total_bytes{Name="host1"} 687......
-# HELP cv4pve_node_swap_free_bytes Node swap free
-# TYPE cv4pve_node_swap_free_bytes gauge
-cv4pve_node_swap_free_bytes{Name="host2"} 606......
-cv4pve_node_swap_free_bytes{Name="host1"} 561......
-# HELP cv4pve_node_root_fs_used_bytes Node root fs used
-# TYPE cv4pve_node_root_fs_used_bytes gauge
-cv4pve_node_root_fs_used_bytes{Name="host2"} 14......
-cv4pve_node_root_fs_used_bytes{Name="host1"} 19......
-# HELP cv4pve_node_root_fs_total_bytes Node root fs total
-# TYPE cv4pve_node_root_fs_total_bytes gauge
-cv4pve_node_root_fs_total_bytes{Name="host2"} 709......
-cv4pve_node_root_fs_total_bytes{Name="host1"} 388......
-# HELP cv4pve_node_root_fs_free_bytes Node root fs free
-# TYPE cv4pve_node_root_fs_free_bytes gauge
-cv4pve_node_root_fs_free_bytes{Name="host2"} 559......
-cv4pve_node_root_fs_free_bytes{Name="host1"} 369......
-# HELP cv4pve_replication_duration_seconds VM/CT replication duration
-# TYPE cv4pve_replication_duration_seconds gauge
-cv4pve_replication_duration_seconds{Id="1000-0",Type="local",Source="host1",Target="host2",Guest="1000"} 6.......
-cv4pve_replication_duration_seconds{Id="1006-0",Type="local",Source="host1",Target="host2",Guest="1006"} 19......
-cv4pve_replication_duration_seconds{Id="1007-0",Type="local",Source="host1",Target="host2",Guest="1007"} 19......
-cv4pve_replication_duration_seconds{Id="1014-0",Type="local",Source="host1",Target="host2",Guest="1014"} 13......
-cv4pve_replication_duration_seconds{Id="1020-0",Type="local",Source="host1",Target="host2",Guest="1020"} 14......
-cv4pve_replication_duration_seconds{Id="1030-0",Type="local",Source="host1",Target="host2",Guest="1030"} 11......
-cv4pve_replication_duration_seconds{Id="1104-0",Type="local",Source="host1",Target="host2",Guest="1104"} 9.......
-cv4pve_replication_duration_seconds{Id="1106-0",Type="local",Source="host1",Target="host2",Guest="1106"} 13......
-cv4pve_replication_duration_seconds{Id="1107-0",Type="local",Source="host1",Target="host2",Guest="1107"} 8.......
-# HELP cv4pve_replication_last_sync_timestamp_seconds VM/CT replication last_sync
-# TYPE cv4pve_replication_last_sync_timestamp_seconds gauge
-cv4pve_replication_last_sync_timestamp_seconds{Id="1000-0",Type="local",Source="host1",Target="host2",Guest="1000"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1006-0",Type="local",Source="host1",Target="host2",Guest="1006"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1007-0",Type="local",Source="host1",Target="host2",Guest="1007"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1014-0",Type="local",Source="host1",Target="host2",Guest="1014"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1020-0",Type="local",Source="host1",Target="host2",Guest="1020"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1030-0",Type="local",Source="host1",Target="host2",Guest="1030"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1104-0",Type="local",Source="host1",Target="host2",Guest="1104"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1106-0",Type="local",Source="host1",Target="host2",Guest="1106"} 1714......
-cv4pve_replication_last_sync_timestamp_seconds{Id="1107-0",Type="local",Source="host1",Target="host2",Guest="1107"} 1714......
-# HELP cv4pve_replication_last_try_timestamp_seconds VM/CT replication last_try
-# TYPE cv4pve_replication_last_try_timestamp_seconds gauge
-cv4pve_replication_last_try_timestamp_seconds{Id="1000-0",Type="local",Source="host1",Target="host2",Guest="1000"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1006-0",Type="local",Source="host1",Target="host2",Guest="1006"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1007-0",Type="local",Source="host1",Target="host2",Guest="1007"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1014-0",Type="local",Source="host1",Target="host2",Guest="1014"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1020-0",Type="local",Source="host1",Target="host2",Guest="1020"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1030-0",Type="local",Source="host1",Target="host2",Guest="1030"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1104-0",Type="local",Source="host1",Target="host2",Guest="1104"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1106-0",Type="local",Source="host1",Target="host2",Guest="1106"} 17145......
-cv4pve_replication_last_try_timestamp_seconds{Id="1107-0",Type="local",Source="host1",Target="host2",Guest="1107"} 17145......
-# HELP cv4pve_replication_next_sync_timestamp_seconds VM/CT replication next_sync
-# TYPE cv4pve_replication_next_sync_timestamp_seconds gauge
-cv4pve_replication_next_sync_timestamp_seconds{Id="1000-0",Type="local",Source="host1",Target="host2",Guest="1000"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1006-0",Type="local",Source="host1",Target="host2",Guest="1006"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1007-0",Type="local",Source="host1",Target="host2",Guest="1007"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1014-0",Type="local",Source="host1",Target="host2",Guest="1014"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1020-0",Type="local",Source="host1",Target="host2",Guest="1020"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1030-0",Type="local",Source="host1",Target="host2",Guest="1030"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1104-0",Type="local",Source="host1",Target="host2",Guest="1104"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1106-0",Type="local",Source="host1",Target="host2",Guest="1106"} 1714......
-cv4pve_replication_next_sync_timestamp_seconds{Id="1107-0",Type="local",Source="host1",Target="host2",Guest="1107"} 1714......
-# HELP cv4pve_replication_failed_syncs VM/CT  replication fail_count
-# TYPE cv4pve_replication_failed_syncs gauge
-cv4pve_replication_failed_syncs{Id="1000-0",Type="local",Source="host1",Target="host2",Guest="1000"} 0
-cv4pve_replication_failed_syncs{Id="1006-0",Type="local",Source="host1",Target="host2",Guest="1006"} 0
-cv4pve_replication_failed_syncs{Id="1007-0",Type="local",Source="host1",Target="host2",Guest="1007"} 0
-cv4pve_replication_failed_syncs{Id="1014-0",Type="local",Source="host1",Target="host2",Guest="1014"} 0
-cv4pve_replication_failed_syncs{Id="1020-0",Type="local",Source="host1",Target="host2",Guest="1020"} 0
-cv4pve_replication_failed_syncs{Id="1030-0",Type="local",Source="host1",Target="host2",Guest="1030"} 0
-cv4pve_replication_failed_syncs{Id="1104-0",Type="local",Source="host1",Target="host2",Guest="1104"} 0
-cv4pve_replication_failed_syncs{Id="1106-0",Type="local",Source="host1",Target="host2",Guest="1106"} 0
-cv4pve_replication_failed_syncs{Id="1107-0",Type="local",Source="host1",Target="host2",Guest="1107"} 0
+For Linux systems, create a systemd service file.
+
+```bash
+# Create service file
+sudo nano /etc/systemd/system/cv4pve-metrics-exporter.service
 ```
+
+Add the following configuration:
+
+```ini
+[Unit]
+Description=Proxmox VE Metrics Exporter for Prometheus
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cv4pve-metrics-exporter --host=pve.local --api-token=metrics@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --service-mode prometheus --http-host=0.0.0.0
+Restart=always
+RestartSec=10
+User=prometheus
+Group=prometheus
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+# Create user
+sudo useradd -r -s /bin/false prometheus
+
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable cv4pve-metrics-exporter
+sudo systemctl start cv4pve-metrics-exporter
+
+# Check status
+sudo systemctl status cv4pve-metrics-exporter
+
+# View logs
+sudo journalctl -u cv4pve-metrics-exporter -f
+```
+
+### Service Mode vs Console Mode
+
+| Feature | Console Mode (Default) | Service Mode (`--service-mode`) |
+|---------|------------------------|--------------------------------|
+| **Interactive Stop** | ✅ Press Enter to stop | ❌ Use Ctrl+C or system stop |
+| **Console Output** | ✅ Full logging to console | ✅ Full logging to console |
+| **Runs in Background** | ❌ Waits for Enter key | ✅ Runs until stopped |
+| **Systemd Integration** | ⚠️ Limited | ✅ Full support with auto-restart |
+| **NSSM Integration** | ⚠️ Limited | ✅ Full support with auto-restart |
+| **Error Handling** | ✅ Exits on fatal errors | ✅ Exits on fatal errors |
+| **Best For** | Development, Testing | Production, Services |
+
+---
+
+## Exported Metrics
+
+The exporter provides comprehensive metrics about your Proxmox VE environment:
+
+### Status Metrics
+- `cv4pve_up` - Node/Storage/VM/CT online/running/available status
+
+### Cluster Metrics
+- `cv4pve_cluster_info` - Cluster information (nodes, quorate, version)
+
+### Node Metrics
+- `cv4pve_node_info` - Node information (IP, version, local status)
+- `cv4pve_node_load_avg{1,5,15}` - Node load averages
+- `cv4pve_node_uptime_seconds` - Node uptime
+- `cv4pve_node_memory_{used,total,free}_bytes` - Node memory metrics
+- `cv4pve_node_swap_{used,total,free}_bytes` - Node swap metrics
+- `cv4pve_node_root_fs_{used,total,free}_bytes` - Node root filesystem metrics
+
+### Guest (VM/CT) Metrics
+- `cv4pve_guest_info` - Guest information (name, node, type, status, tags)
+- `cv4pve_cpu_usage_ratio` - CPU usage
+- `cv4pve_cpu_usage_limit` - CPU limit
+- `cv4pve_memory_{size,usage}_bytes` - Memory metrics
+- `cv4pve_disk_{size,usage,read,write}_bytes` - Disk metrics
+- `cv4pve_network_{transmit,receive}_bytes` - Network metrics
+- `cv4pve_uptime_seconds` - Guest uptime
+- `cv4pve_balloon_{actual,max_mem,last_update}_bytes` - Balloon memory (QEMU only)
+- `cv4pve_host_memory_usage_bytes` - Host memory usage
+- `cv4pve_onboot_status` - Onboot configuration
+
+### Storage Metrics
+- `cv4pve_storage_info` - Storage information (node, shared status)
+
+### Replication Metrics
+- `cv4pve_replication_duration_seconds` - Replication duration
+- `cv4pve_replication_last_sync_timestamp_seconds` - Last successful sync
+- `cv4pve_replication_last_try_timestamp_seconds` - Last sync attempt
+- `cv4pve_replication_next_sync_timestamp_seconds` - Next scheduled sync
+- `cv4pve_replication_failed_syncs` - Failed sync count
+
+---
+
+## API Token Setup
+
+For Proxmox VE 6.2 and later, using API tokens is recommended:
+
+### Create API Token
+
+1. Log into Proxmox VE web interface
+2. Go to **Datacenter** → **Permissions** → **API Tokens**
+3. Click **Add**
+4. Fill in the details:
+   - **User**: `root@pam` (or create dedicated user)
+   - **Token ID**: `metrics`
+   - **Privilege Separation**: Uncheck for full permissions (or configure specific permissions)
+5. Click **Add**
+6. **Save the token secret** - it will only be shown once!
+
+### Required Permissions
+
+If using privilege separation, the token needs:
+
+- **Path**: `/`
+- **Role**: `PVEAuditor` (read-only access)
+
+```bash
+# Create dedicated user for metrics (optional)
+pveum user add metrics-user@pve
+
+# Create API token
+pveum user token add metrics-user@pve metrics --privsep 0
+
+# Or with privilege separation (more secure)
+pveum user token add metrics-user@pve metrics --privsep 1
+pveum aclmod / -user metrics-user@pve -role PVEAuditor
+```
+
+---
+
+## Troubleshooting
+
+### Connection Issues
+
+```bash
+# Test connection to Proxmox VE API
+curl -k https://YOUR_HOST:8006/api2/json/version
+
+# Check if exporter is running
+curl http://localhost:9221/metrics/
+
+# Verify API token
+pveum user token list
+```
+
+### Common Issues
+
+**Issue**: `Connection refused`
+- Check firewall rules on Proxmox VE host (port 8006)
+- Verify network connectivity: `ping YOUR_HOST`
+
+**Issue**: `SSL certificate validation failed`
+- Use `--validate-certificate` only with valid SSL certificates
+- For self-signed certificates, omit this flag
+
+**Issue**: `Permission denied`
+- Verify API token or user has sufficient permissions
+- Check token hasn't expired: `pveum user token list`
+
+**Issue**: `Metrics not appearing in Prometheus`
+- Verify exporter endpoint: `curl http://localhost:9221/metrics/`
+- Check Prometheus scrape configuration
+- Review Prometheus logs: `journalctl -u prometheus -f`
+
+---
+
+## Support
+
+Professional support and consulting available through [Corsinvest](https://www.corsinvest.it/cv4pve).
+
+---
+
+Part of [cv4pve](https://www.corsinvest.it/cv4pve) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+
+Copyright © Corsinvest Srl
