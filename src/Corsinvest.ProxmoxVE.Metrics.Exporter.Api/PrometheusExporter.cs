@@ -57,7 +57,7 @@ public class PrometheusExporter
     private readonly Dictionary<string, Gauge> _guestBalloonInfo = [];
     private readonly Dictionary<string, Gauge> _nodeExtraInfo = [];
     private readonly Dictionary<string, Gauge> _nodeReplicationInfo = [];
-    private readonly MetricServer _server;
+    private MetricServer? _server;
     private readonly CollectorRegistry _registry;
 
     /// <summary>
