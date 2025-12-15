@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
+    <PackageVersion Include="Corsinvest.ProxmoxVE.Api.Extension" Version="9.1.0" />
+    <PackageVersion Include="Corsinvest.ProxmoxVE.Api.Console" Version="9.1.0" />
+    <PackageVersion Include="prometheus-net" Version="8.2.1" />
+  </ItemGroup>
+</Project>

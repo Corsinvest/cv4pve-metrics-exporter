@@ -1,63 +1,90 @@
-﻿/*
+/*
  * SPDX-License-Identifier: GPL-3.0-only
- * SPDX-FileCopyrightText: 2019 Copyright Corsinvest Srl
+ * SPDX-FileCopyrightText: Copyright Corsinvest Srl
  */
 
-using System;
-using System.CommandLine;
-using Corsinvest.ProxmoxVE.Api.Shell.Helpers;
+using Corsinvest.ProxmoxVE.Api.Console.Helpers;
 using Corsinvest.ProxmoxVE.Metrics.Exporter.Api;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+// Parse command line arguments using ConsoleHelper
 var app = ConsoleHelper.CreateApp("cv4pve-metrics-exporter", "Metrics Exporter for Proxmox VE");
-var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());
+var optServiceMode = app.AddOption<bool>("--service-mode", "Run as background service (runs until stopped, no Enter key)");
 
 var cmd = app.AddCommand("prometheus", "Export for Prometheus");
-var optHost = cmd.AddOption<string>("--http-host", $"Http host (default: {PrometheusExporter.DEFAULT_HOST})");
-optHost.SetDefaultValue(PrometheusExporter.DEFAULT_HOST);
 
-var optPort = cmd.AddOption<int>("--http-port", $"Http port (default: {PrometheusExporter.DEFAULT_PORT})");
-optPort.SetDefaultValue(PrometheusExporter.DEFAULT_PORT);
+var optHttpHost = cmd.AddOption<string>("--http-host", $"Http host");
+optHttpHost.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_HOST;
 
-var optUrl = cmd.AddOption<string>("--http-url", $"Http url (default: {PrometheusExporter.DEFAULT_URL})");
-optUrl.SetDefaultValue(PrometheusExporter.DEFAULT_URL);
+var optHttpPort = cmd.AddOption<int>("--http-port", $"Http port");
+optHttpPort.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_PORT;
 
-var optPrefix = cmd.AddOption<string>("--prefix", $"Prefix export (default: {PrometheusExporter.DEFAULT_PREFIX})");
-optPrefix.SetDefaultValue(PrometheusExporter.DEFAULT_PREFIX);
+var optHttpUrl = cmd.AddOption<string>("--http-url", $"Http url");
+optHttpUrl.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_URL;
 
-cmd.SetHandler((pveHost, pveValidateCertificate, pveUsername, pveApiToken, host, port, url, prefix) =>
+var optPrefix = cmd.AddOption<string>("--prefix", $"Prefix export");
+optPrefix.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_PREFIX;
+
+cmd.SetAction(async (action) =>
 {
-    var exporter = new PrometheusExporter(pveHost,
-                                          pveValidateCertificate,
-                                          pveUsername,
-                                          app.GetPasswordFromOption(),
-                                          pveApiToken,
-                                          loggerFactory,
-                                          host,
-                                          port,
-                                          url,
-                                          prefix);
+    // Create host builder with dependency injection
+    var hostBuilder = Host.CreateDefaultBuilder()
+        .ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
 
-    exporter.Start();
+            // Apply same filtering as ConsoleHelper.CreateLoggerFactory
+            var logLevel = app.GetLogLevelFromDebug();
+            logging.AddFilter("Microsoft", LogLevel.Warning);
+            logging.AddFilter("System", LogLevel.Warning);
+            logging.AddFilter("Corsinvest.ProxmoxVE.Api.PveClientBase", logLevel);
+            logging.SetMinimumLevel(logLevel);
+        })
+        .ConfigureServices((context, services) =>
+        {
+            // Register metrics exporter configuration options
+            services.AddSingleton(new MetricsServiceOptions
+            {
+                Host = action.GetValue(app.GetHostOption())!,
+                Username = action.GetValue(app.GetUsernameOption())!,
+                Password = app.GetPasswordFromOption(),
+                ApiToken = action.GetValue(app.GetApiTokenOption()),
+                ValidateCertificate = action.GetValue(app.GetValidateCertificateOption()),
+                HttpHost = action.GetValue(optHttpHost)!,
+                HttpPort = action.GetValue(optHttpPort),
+                HttpUrl = action.GetValue(optHttpUrl)!,
+                Prefix = action.GetValue(optPrefix)!,
+                ServiceMode = action.GetValue(optServiceMode)
+            });
 
-    Console.Out.WriteLine("Corsinvest for Proxmox VE");
-    Console.Out.WriteLine($"Cluster: {pveHost} - User: {pveUsername}");
-    Console.Out.WriteLine($"Exporter Prometheus: http://{host}:{port}/{url} - Prefix: {prefix}");
+            // Register the metrics background service
+            services.AddHostedService<MetricsBackgroundService>();
+        });
 
-    Console.ReadLine();
+    var host = hostBuilder.Build();
 
-    try { exporter.Stop(); }
-    catch { }
+    // Run in appropriate mode
+    if (action.GetValue(optServiceMode) == false)
+    {
+        // Console mode - allow manual stop with Enter key
+        await host.StartAsync();
 
-    Console.Out.WriteLine("End application");
-},
-app.GetHostOption(),
-app.GetValidateCertificateOption(),
-app.GetUsernameOption(),
-app.GetApiTokenOption(),
-optHost,
-optPort,
-optUrl,
-optPrefix);
+        Console.WriteLine("Metrics exporter is running. Press Enter to stop...");
+        Console.ReadLine();
 
-return await app.ExecuteAppAsync(args, loggerFactory.CreateLogger(typeof(Program)));
+        Console.WriteLine("Stopping metrics exporter...");
+        await host.StopAsync(TimeSpan.FromSeconds(10));
+    }
+    else
+    {
+        // Service mode - run indefinitely until process is killed
+        await host.RunAsync();
+    }
+});
+
+var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());
+
+return await app.ExecuteAppAsync(args, loggerFactory.CreateLogger<Program>());

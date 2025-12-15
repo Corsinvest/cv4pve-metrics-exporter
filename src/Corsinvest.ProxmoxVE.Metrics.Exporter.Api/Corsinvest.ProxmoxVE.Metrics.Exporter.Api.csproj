@@ -1,40 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-		<TargetFrameworks>net7.0;net8.0;net9.0</TargetFrameworks>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-
-    <Version>1.6.0</Version>
-    <Company>Corsinvest Srl</Company>
-    <Authors>Daniele Corsini</Authors>
-    <Copyright>Corsinvest Srl</Copyright>
-    <Product>Corsinvest for Proxmox VE Metrics Exporter Api</Product>
-    <AssemblyTitle>Corsinvest for Proxmox VE Metrics Exporter Api</AssemblyTitle>
-    <Description>Corsinvest for Proxmox VE Metrics Exporter Api</Description>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <Description>Metrics Exporter API library for Proxmox VE monitoring</Description>
 
     <PackageProjectUrl>https://github.com/Corsinvest/cv4pve-metrics-exporter</PackageProjectUrl>
-    <PackageTags>ProxmoxVE;Api,Client;Rest;Corsinvest;Metrics;Exporter;InfluxDb;Prometheus</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes></PackageReleaseNotes>
-    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <RepositoryType>Github</RepositoryType>
+    <PackageTags>ProxmoxVE;Api;Client;Rest;Corsinvest;Metrics;Exporter;Prometheus</PackageTags>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Corsinvest/cv4pve-metrics-exporter</RepositoryUrl>
+		<PackageOutputPath>..\..\..\.nupkgs\</PackageOutputPath>
 
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+
+    <!-- Include symbol files (*.pdb) in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="" />
-    <None Include="..\..\icon.png" Pack="true" PackagePath="" />
-    <none Include="..\..\README.md" Pack="true" PackagePath="" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj" /> -->
-    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.3.3" />
-    <PackageReference Include="prometheus-net" Version="8.2.1" />
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" />
+    <PackageReference Include="prometheus-net" />
   </ItemGroup>
 </Project>

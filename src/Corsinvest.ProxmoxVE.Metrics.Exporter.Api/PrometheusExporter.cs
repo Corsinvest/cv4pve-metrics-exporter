@@ -3,12 +3,8 @@
  * SPDX-FileCopyrightText: 2019 Copyright Corsinvest Srl
  */
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Extension.Utils;
@@ -57,11 +53,11 @@ public class PrometheusExporter
     private readonly Gauge _vmOnBootInfo;
     private readonly Gauge _storageInfo;
     //private readonly Gauge StorageDef;
-    private readonly Dictionary<string, Gauge> _resourceInfo = new();
-    private readonly Dictionary<string, Gauge> _guestBalloonInfo = new();
-    private readonly Dictionary<string, Gauge> _nodeExtraInfo = new();
-    private readonly Dictionary<string, Gauge> _nodeReplicationInfo = new();
-    private readonly MetricServer _server;
+    private readonly Dictionary<string, Gauge> _resourceInfo = [];
+    private readonly Dictionary<string, Gauge> _guestBalloonInfo = [];
+    private readonly Dictionary<string, Gauge> _nodeExtraInfo = [];
+    private readonly Dictionary<string, Gauge> _nodeReplicationInfo = [];
+    private MetricServer? _server;
     private readonly CollectorRegistry _registry;
 
     /// <summary>
@@ -121,47 +117,47 @@ public class PrometheusExporter
         //create gauges
         _up = metricFactory.CreateGauge($"{prefix}_up",
                                         "Proxmox VE Node/Storage/VM/CT-Status is online/running/available",
-                                        new GaugeConfiguration { LabelNames = new[] { "Id" } });
+                                        new GaugeConfiguration { LabelNames = ["Id"] });
 
         _nodeInfo = metricFactory.CreateGauge($"{prefix}_node_info",
                                               "Node info",
                                               new GaugeConfiguration
                                               {
-                                                  LabelNames = new[]
-                                                    {
+                                                  LabelNames =
+                                                  [
                                                         nameof(ClusterStatus.IpAddress),
                                                         nameof(ClusterStatus.Level),
                                                         nameof(ClusterStatus.Local),
                                                         nameof(ClusterStatus.Name),
                                                         nameof(ClusterStatus.NodeId),
                                                         nameof(NodeVersion.Version),
-                                                    }
+                                                    ]
                                               });
 
         _nodeDiskWearout = metricFactory.CreateGauge($"{prefix}_node_disk_Wearout",
                                                      "Node disk wearout",
                                                      new GaugeConfiguration
                                                      {
-                                                         LabelNames = new[]
-                                                            {
-                                                                nameof(NodeDiskList.Serial),
-                                                                "Node",
-                                                                nameof(NodeDiskList.Type),
-                                                                nameof(NodeDiskList.DevPath),
-                                                            }
+                                                         LabelNames =
+                                                        [
+                                                            nameof(NodeDiskList.Serial),
+                                                            "Node",
+                                                            nameof(NodeDiskList.Type),
+                                                            nameof(NodeDiskList.DevPath),
+                                                        ]
                                                      });
 
         _nodeDiskHealth = metricFactory.CreateGauge($"{prefix}_node_disk_health",
                                                     "Node disk health",
                                                      new GaugeConfiguration
                                                      {
-                                                         LabelNames = new[]
-                                                        {
+                                                         LabelNames =
+                                                        [
                                                             nameof(NodeDiskList.Serial),
                                                             "Node",
                                                             nameof(NodeDiskList.Type),
                                                             nameof(NodeDiskList.DevPath),
-                                                        }
+                                                        ]
                                                      });
 
         // _nodeDiskSmart = metricFactory.CreateGauge($"{prefix}_node_disk_smart",
@@ -181,21 +177,21 @@ public class PrometheusExporter
                                                  "Cluster info",
                                                  new GaugeConfiguration
                                                  {
-                                                     LabelNames = new[]
-                                                    {
+                                                     LabelNames =
+                                                    [
                                                         nameof(ClusterStatus.Id),
                                                         nameof(ClusterStatus.Nodes),
                                                         nameof(ClusterStatus.Quorate),
                                                         nameof(ClusterStatus.Version),
-                                                    }
+                                                    ]
                                                  });
 
         _guestInfo = metricFactory.CreateGauge($"{prefix}_guest_info",
                                                "VM/CT info",
                                                new GaugeConfiguration
                                                {
-                                                   LabelNames = new[]
-                                                    {
+                                                   LabelNames =
+                                                    [
                                                         nameof(IClusterResourceVm.Id),
                                                         nameof(IClusterResourceVm.VmId),
                                                         nameof(IClusterResourceVm.Node),
@@ -203,36 +199,36 @@ public class PrometheusExporter
                                                         nameof(IClusterResourceVm.Type),
                                                         nameof(IClusterResourceVm.Status),
                                                         nameof(IClusterResourceVm.Tags),
-                                                    }
+                                                    ]
                                                });
 
 
         _vmOnBootInfo = metricFactory.CreateGauge($"{prefix}_onboot_status",
-                                               "VM/CT config onboot value",
-                                               new GaugeConfiguration
-                                               {
-                                                   LabelNames = new[]
-                                                    {
+                                                  "VM/CT config onboot value",
+                                                  new GaugeConfiguration
+                                                  {
+                                                      LabelNames =
+                                                    [
                                                         nameof(IClusterResourceVm.Id),
                                                         nameof(IClusterResourceVm.VmId),
                                                         nameof(IClusterResourceVm.Node),
                                                         nameof(IClusterResourceVm.Name),
                                                         nameof(IClusterResourceVm.Type),
-                                                    }
-                                               });
+                                                    ]
+                                                  });
 
         _storageInfo = metricFactory.CreateGauge($"{prefix}_storage_info",
-                                                  "Storage info",
-                                                  new GaugeConfiguration
-                                                  {
-                                                      LabelNames = new[]
-                                                     {
+                                                 "Storage info",
+                                                 new GaugeConfiguration
+                                                 {
+                                                     LabelNames =
+                                                    [
                                                         nameof(IClusterResourceStorage.Id),
                                                         nameof(IClusterResourceStorage.Node),
                                                         nameof(IClusterResourceStorage.Storage),
                                                         nameof(IClusterResourceStorage.Shared),
-                                                     }
-                                                  });
+                                                    ]
+                                                 });
 
         // StorageDef = metricFactory.CreateGauge($"{prefix}_storage_def",
         //                                             "Storage info 1",
@@ -276,10 +272,10 @@ public class PrometheusExporter
                               description,
                               new GaugeConfiguration
                               {
-                                  LabelNames = new[]
-                                {
+                                  LabelNames =
+                                [
                                     nameof(IClusterResourceVm.Id),
-                                }
+                                ]
                               }));
         }
 
@@ -297,11 +293,11 @@ public class PrometheusExporter
                                                             Description,
                                                             new GaugeConfiguration
                                                             {
-                                                                LabelNames = new[]
-                                                                {
+                                                                LabelNames =
+                                                                [
                                                                     nameof(ClusterResource.Id),
                                                                     nameof(ClusterResource.VmId),
-                                                                }
+                                                                ]
                                                             }));
         }
 
@@ -320,10 +316,10 @@ public class PrometheusExporter
                                                          description,
                                                          new GaugeConfiguration
                                                          {
-                                                             LabelNames = new[]
-                                                            {
+                                                             LabelNames =
+                                                            [
                                                                 nameof(ClusterStatus.Name),
-                                                            }
+                                                            ]
                                                          }));
         }
 
@@ -349,14 +345,14 @@ public class PrometheusExporter
                                                          description,
                                                          new GaugeConfiguration
                                                          {
-                                                             LabelNames = new[]
-                                                            {
+                                                             LabelNames =
+                                                            [
                                                                 nameof(ClusterStatus.Name),
-                                                            }
+                                                            ]
                                                          }));
         }
 
-        ////_nodeReplicationInfo
+        //_nodeReplicationInfo
         var defs5 = new (string propertyName, string name, string description)[]
         {
             ( nameof(NodeReplication.Duration), "replication_duration_seconds", "VM/CT replication duration" ),
@@ -373,14 +369,14 @@ public class PrometheusExporter
                                      description,
                                      new GaugeConfiguration
                                      {
-                                         LabelNames = new[]
-                                         {
+                                         LabelNames =
+                                         [
                                             nameof(NodeReplication.Id),
                                             nameof(NodeReplication.Type),
                                             nameof(NodeReplication.Source),
                                             nameof(NodeReplication.Target),
                                             nameof(NodeReplication.Guest),
-                                         }
+                                         ]
                                      }));
         }
     }
@@ -404,15 +400,15 @@ public class PrometheusExporter
                     _up.WithLabels(item.Id).Set(item.IsOnline ? 1 : 0);
 
                     var version = await client.Nodes[item.Name].Version.GetAsync();
-                    _nodeInfo.WithLabels(new[]
-                    {
+                    _nodeInfo.WithLabels(
+                    [
                          item.IpAddress,
                          item.Level,
                          item.Local + "",
                          item.Name,
                          item.NodeId + "",
                          version.Version,
-                     }).Set(1);
+                     ]).Set(1);
 
                     if (item.IsOnline)
                     {
@@ -524,7 +520,7 @@ public class PrometheusExporter
                                                 .Monitor.Monitor("info balloon"))
                                                 .Response.data as string;
 
-                        if (data.StartsWith(KeyBalloon))
+                        if (data!.StartsWith(KeyBalloon))
                         {
                             //split data
                             var dataIb = data[(data.IndexOf(KeyBalloon) + KeyBalloon.Length)..]
@@ -540,7 +536,7 @@ public class PrometheusExporter
                                 var row = dataIb.FirstOrDefault(a => a.Name == gbi.Key);
                                 if (row != null)
                                 {
-                                    gbi.Value.WithLabels(new[] { item.Id, item.VmId.ToString() })
+                                    gbi.Value.WithLabels([item.Id, item.VmId.ToString()])
                                              .Set(row.Value * 1024 * 1024);
                                 }
                             }
@@ -572,5 +568,5 @@ public class PrometheusExporter
                            .ToArray();
 
     private static T GetValue<T>(object obj, string propertyName)
-        => (T)Convert.ChangeType(obj.GetType().GetProperty(propertyName).GetValue(obj), typeof(T));
+        => (T)Convert.ChangeType(obj.GetType().GetProperty(propertyName)!.GetValue(obj)!, typeof(T));
 }
