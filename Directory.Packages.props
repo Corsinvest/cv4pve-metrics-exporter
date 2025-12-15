@@ -1,7 +1,6 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <PackageOutputPath>..\nupkgs\</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

@@ -11,6 +11,7 @@
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Corsinvest/cv4pve-metrics-exporter</RepositoryUrl>
+		<PackageOutputPath>..\..\..\.nupkgs\</PackageOutputPath>
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
