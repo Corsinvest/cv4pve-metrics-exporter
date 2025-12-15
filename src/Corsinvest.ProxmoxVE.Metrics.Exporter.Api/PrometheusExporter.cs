@@ -138,7 +138,7 @@ public class PrometheusExporter
                                                      "Node disk wearout",
                                                      new GaugeConfiguration
                                                      {
-                                                        LabelNames =
+                                                         LabelNames =
                                                         [
                                                             nameof(NodeDiskList.Serial),
                                                             "Node",
@@ -151,7 +151,7 @@ public class PrometheusExporter
                                                     "Node disk health",
                                                      new GaugeConfiguration
                                                      {
-                                                        LabelNames =
+                                                         LabelNames =
                                                         [
                                                             nameof(NodeDiskList.Serial),
                                                             "Node",
@@ -177,7 +177,7 @@ public class PrometheusExporter
                                                  "Cluster info",
                                                  new GaugeConfiguration
                                                  {
-                                                    LabelNames =
+                                                     LabelNames =
                                                     [
                                                         nameof(ClusterStatus.Id),
                                                         nameof(ClusterStatus.Nodes),
@@ -190,7 +190,7 @@ public class PrometheusExporter
                                                "VM/CT info",
                                                new GaugeConfiguration
                                                {
-                                                    LabelNames =
+                                                   LabelNames =
                                                     [
                                                         nameof(IClusterResourceVm.Id),
                                                         nameof(IClusterResourceVm.VmId),
@@ -207,7 +207,7 @@ public class PrometheusExporter
                                                   "VM/CT config onboot value",
                                                   new GaugeConfiguration
                                                   {
-                                                    LabelNames =
+                                                      LabelNames =
                                                     [
                                                         nameof(IClusterResourceVm.Id),
                                                         nameof(IClusterResourceVm.VmId),
@@ -221,7 +221,7 @@ public class PrometheusExporter
                                                  "Storage info",
                                                  new GaugeConfiguration
                                                  {
-                                                    LabelNames =
+                                                     LabelNames =
                                                     [
                                                         nameof(IClusterResourceStorage.Id),
                                                         nameof(IClusterResourceStorage.Node),
@@ -272,7 +272,7 @@ public class PrometheusExporter
                               description,
                               new GaugeConfiguration
                               {
-                                LabelNames =
+                                  LabelNames =
                                 [
                                     nameof(IClusterResourceVm.Id),
                                 ]
