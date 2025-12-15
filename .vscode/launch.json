@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Metrics.Exporter/bin/Debug/net9.0/cv4pve-metrics-exporter.dll",
+            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Metrics.Exporter/bin/Debug/net10.0/cv4pve-metrics-exporter.dll",
             "args": [
                 "@Parm.parm"
             ],
