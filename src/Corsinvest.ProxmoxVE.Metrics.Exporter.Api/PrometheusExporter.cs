@@ -11,6 +11,7 @@ using Corsinvest.ProxmoxVE.Api.Extension.Utils;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
+using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 
@@ -45,6 +46,7 @@ public class PrometheusExporter
 
     private readonly Gauge _up;
     private readonly Gauge _nodeInfo;
+    private readonly Gauge _nodeSubscriptionInfo;
     private readonly Gauge _nodeDiskWearout;
     private readonly Gauge _nodeDiskHealth;
     //private readonly Gauge _nodeDiskSmart;
@@ -52,6 +54,7 @@ public class PrometheusExporter
     private readonly Gauge _guestInfo;
     private readonly Gauge _vmOnBootInfo;
     private readonly Gauge _storageInfo;
+    private readonly Gauge _haResourceInfo;
     //private readonly Gauge StorageDef;
     private readonly Dictionary<string, Gauge> _resourceInfo = [];
     private readonly Dictionary<string, Gauge> _guestBalloonInfo = [];
@@ -134,6 +137,18 @@ public class PrometheusExporter
                                                     ]
                                               });
 
+        _nodeSubscriptionInfo = metricFactory.CreateGauge($"{prefix}_node_subscription_info",
+                                                          "Node subscription info",
+                                                          new GaugeConfiguration
+                                                          {
+                                                              LabelNames =
+                                                              [
+                                                                    nameof(ClusterStatus.Name),
+                                                                    nameof(NodeSubscription.Status),
+                                                                    nameof(NodeSubscription.Level),
+                                                              ]
+                                                          });
+
         _nodeDiskWearout = metricFactory.CreateGauge($"{prefix}_node_disk_Wearout",
                                                      "Node disk wearout",
                                                      new GaugeConfiguration
@@ -183,6 +198,7 @@ public class PrometheusExporter
                                                         nameof(ClusterStatus.Nodes),
                                                         nameof(ClusterStatus.Quorate),
                                                         nameof(ClusterStatus.Version),
+                                                        nameof(ClusterStatus.Level),
                                                     ]
                                                  });
 
@@ -199,6 +215,7 @@ public class PrometheusExporter
                                                         nameof(IClusterResourceVm.Type),
                                                         nameof(IClusterResourceVm.Status),
                                                         nameof(IClusterResourceVm.Tags),
+                                                        nameof(IClusterResourceVm.Lock),
                                                     ]
                                                });
 
@@ -214,6 +231,7 @@ public class PrometheusExporter
                                                         nameof(IClusterResourceVm.Node),
                                                         nameof(IClusterResourceVm.Name),
                                                         nameof(IClusterResourceVm.Type),
+                                                        nameof(IClusterResourceVm.Lock),
                                                     ]
                                                   });
 
@@ -227,8 +245,23 @@ public class PrometheusExporter
                                                         nameof(IClusterResourceStorage.Node),
                                                         nameof(IClusterResourceStorage.Storage),
                                                         nameof(IClusterResourceStorage.Shared),
+                                                        nameof(IClusterResourceStorage.DiskSize),
+                                                        nameof(IClusterResourceStorage.DiskUsage),
                                                     ]
                                                  });
+
+        _haResourceInfo = metricFactory.CreateGauge($"{prefix}_ha_resource_info",
+                                                    "HA resource info",
+                                                    new GaugeConfiguration
+                                                    {
+                                                        LabelNames =
+                                                        [
+                                                            nameof(ClusterHaResource.Sid),
+                                                            nameof(ClusterHaResource.State),
+                                                            nameof(ClusterHaResource.Type),
+                                                            nameof(ClusterHaResource.Group),
+                                                        ]
+                                                    });
 
         // StorageDef = metricFactory.CreateGauge($"{prefix}_storage_def",
         //                                             "Storage info 1",
@@ -403,12 +436,20 @@ public class PrometheusExporter
                     _nodeInfo.WithLabels(
                     [
                          item.IpAddress,
-                         item.Level,
-                         item.Local + "",
+                         NodeHelper.DecodeLevelSupport(item.Level).ToString(),
+                         item.Local + string.Empty,
                          item.Name,
-                         item.NodeId + "",
+                         item.NodeId + string.Empty,
                          version.Version,
                      ]).Set(1);
+
+                    var subscription = await client.Nodes[item.Name].Subscription.GetAsync();
+                    _nodeSubscriptionInfo.WithLabels(
+                    [
+                        item.Name,
+                        subscription.Status ,
+                        NodeHelper.DecodeLevelSupport(subscription.Level ).ToString(),
+                    ]).Set(subscription.Status?.Equals("active", StringComparison.OrdinalIgnoreCase) == true ? 1 : 0);
 
                     if (item.IsOnline)
                     {
@@ -558,14 +599,32 @@ public class PrometheusExporter
                 default: break;
             }
         }
+
+        // HA resources (only if HA is configured)
+        try
+        {
+            var haResources = await client.Cluster.Ha.Resources.GetAsync();
+            foreach (var ha in haResources)
+            {
+                _haResourceInfo.WithLabels(
+                [
+                    ha.Sid ?? string.Empty,       // Resource ID (vm:100, ct:101)
+                    ha.State ?? string.Empty,     // State (started, stopped, etc.)
+                    ha.Type ?? string.Empty,      // Type (vm, ct)
+                    ha.Group ?? string.Empty,     // HA group
+                ]).Set(ha.State?.Equals("started", StringComparison.OrdinalIgnoreCase) == true ? 1 : 0);
+            }
+        }
+        catch
+        {
+            // HA not configured - skip silently
+        }
     }
 
     private static void SetGauge(Gauge gauge, object obj) => gauge.WithLabels(GetValues(gauge, obj)).Set(1);
 
     private static string[] GetValues(Gauge gauge, object obj)
-        => gauge.LabelNames.Select(a => GetValue<object>(obj, a) + "")
-                           .Cast<string>()
-                           .ToArray();
+        => [.. gauge.LabelNames.Select(a => GetValue<object>(obj, a) + string.Empty).Cast<string>()];
 
     private static T GetValue<T>(object obj, string propertyName)
         => (T)Convert.ChangeType(obj.GetType().GetProperty(propertyName)!.GetValue(obj)!, typeof(T));

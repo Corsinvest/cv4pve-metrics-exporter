@@ -279,43 +279,352 @@ sudo journalctl -u cv4pve-metrics-exporter -f
 
 ## Exported Metrics
 
-The exporter provides comprehensive metrics about your Proxmox VE environment:
+The exporter provides comprehensive metrics about your Proxmox VE environment. All metrics use the configurable prefix (default: `cv4pve`).
 
-### Status Metrics
-- `cv4pve_up` - Node/Storage/VM/CT online/running/available status
+### Status & Availability Metrics
+
+#### `cv4pve_up`
+Resource availability status (1 = available/running, 0 = unavailable/stopped).
+
+**Labels:**
+- `id` - Resource identifier (node name, storage ID, or VM/CT ID)
+- `type` - Resource type: `node`, `storage`, `qemu` (VM), `lxc` (container)
+
+**Example:**
+```
+cv4pve_up{id="pve1",type="node"} 1
+cv4pve_up{id="100",type="qemu"} 1
+cv4pve_up{id="local-lvm",type="storage"} 1
+```
+
+---
 
 ### Cluster Metrics
-- `cv4pve_cluster_info` - Cluster information (nodes, quorate, version)
+
+#### `cv4pve_cluster_info`
+Cluster-wide information. Value is always 1 when cluster is accessible.
+
+**Labels:**
+- `name` - Cluster name
+- `nodes` - Total number of nodes
+- `quorate` - Quorum status (1 = quorate, 0 = not quorate)
+- `version` - Proxmox VE version
+
+**Example:**
+```
+cv4pve_cluster_info{name="proxmox",nodes="3",quorate="1",version="8.2"} 1
+```
+
+---
 
 ### Node Metrics
-- `cv4pve_node_info` - Node information (IP, version, local status)
-- `cv4pve_node_load_avg{1,5,15}` - Node load averages
-- `cv4pve_node_uptime_seconds` - Node uptime
-- `cv4pve_node_memory_{used,total,free}_bytes` - Node memory metrics
-- `cv4pve_node_swap_{used,total,free}_bytes` - Node swap metrics
-- `cv4pve_node_root_fs_{used,total,free}_bytes` - Node root filesystem metrics
+
+#### `cv4pve_node_info`
+Node information and status. Value is always 1.
+
+**Labels:**
+- `name` - Node name
+- `ip` - Node IP address
+- `level` - Support level
+- `local` - Is local node (true/false)
+- `online` - Node online status (true/false)
+- `status` - Node status
+
+**Example:**
+```
+cv4pve_node_info{name="pve1",ip="192.168.1.10",level="c",local="true",online="true",status="online"} 1
+```
+
+#### `cv4pve_node_subscription_info`
+Node subscription status. Value is 1 when subscription is active, 0 otherwise.
+
+**Labels:**
+- `node` - Node name
+- `status` - Subscription status (e.g., "active", "inactive", "notfound")
+- `level` - Support level (e.g., "community", "basic", "standard", "premium")
+
+**Example:**
+```
+cv4pve_node_subscription_info{node="pve1",status="active",level="standard"} 1
+```
+
+**Note:** This metric provides subscription visibility, which is not available in prometheus-pve-exporter.
+
+#### `cv4pve_node_disk_smart_health`
+Disk SMART health status from wearout indicator.
+
+**Labels:**
+- `node` - Node name
+- `disk` - Disk device name (e.g., "/dev/sda")
+
+**Example:**
+```
+cv4pve_node_disk_smart_health{node="pve1",disk="/dev/sda"} 98
+```
+
+#### `cv4pve_node_disk_smart_wearout`
+Disk wear level percentage from SMART data.
+
+**Labels:**
+- `node` - Node name
+- `disk` - Disk device name
+
+**Example:**
+```
+cv4pve_node_disk_smart_wearout{node="pve1",disk="/dev/nvme0n1"} 5
+```
+
+#### `cv4pve_node_load_avg1`, `cv4pve_node_load_avg5`, `cv4pve_node_load_avg15`
+Node load averages over 1, 5, and 15 minutes.
+
+**Labels:**
+- `id` - Node name
+
+**Example:**
+```
+cv4pve_node_load_avg1{id="pve1"} 0.45
+cv4pve_node_load_avg5{id="pve1"} 0.38
+cv4pve_node_load_avg15{id="pve1"} 0.42
+```
+
+#### `cv4pve_node_uptime_seconds`
+Node uptime in seconds.
+
+**Labels:**
+- `id` - Node name
+
+#### Node Memory Metrics
+- `cv4pve_node_memory_used_bytes` - Used memory
+- `cv4pve_node_memory_total_bytes` - Total memory
+- `cv4pve_node_memory_free_bytes` - Free memory
+
+**Labels:**
+- `id` - Node name
+
+#### Node Swap Metrics
+- `cv4pve_node_swap_used_bytes` - Used swap space
+- `cv4pve_node_swap_total_bytes` - Total swap space
+- `cv4pve_node_swap_free_bytes` - Free swap space
+
+**Labels:**
+- `id` - Node name
+
+#### Node Root Filesystem Metrics
+- `cv4pve_node_root_fs_used_bytes` - Used root filesystem space
+- `cv4pve_node_root_fs_total_bytes` - Total root filesystem space
+- `cv4pve_node_root_fs_free_bytes` - Free root filesystem space
+
+**Labels:**
+- `id` - Node name
+
+---
 
 ### Guest (VM/CT) Metrics
-- `cv4pve_guest_info` - Guest information (name, node, type, status, tags)
-- `cv4pve_cpu_usage_ratio` - CPU usage
-- `cv4pve_cpu_usage_limit` - CPU limit
-- `cv4pve_memory_{size,usage}_bytes` - Memory metrics
-- `cv4pve_disk_{size,usage,read,write}_bytes` - Disk metrics
-- `cv4pve_network_{transmit,receive}_bytes` - Network metrics
-- `cv4pve_uptime_seconds` - Guest uptime
-- `cv4pve_balloon_{actual,max_mem,last_update}_bytes` - Balloon memory (QEMU only)
-- `cv4pve_host_memory_usage_bytes` - Host memory usage
-- `cv4pve_onboot_status` - Onboot configuration
+
+#### `cv4pve_guest_info`
+Guest (VM or container) information. Value is always 1.
+
+**Labels:**
+- `id` - VM/CT ID
+- `name` - VM/CT name
+- `node` - Node hosting the guest
+- `type` - Guest type: `qemu` (VM) or `lxc` (container)
+- `status` - Current status (e.g., "running", "stopped")
+- `tags` - Tags assigned to the guest
+- `lock` - **Lock status** (e.g., "backup", "snapshot", "migrate", or empty if not locked)
+
+**Example:**
+```
+cv4pve_guest_info{id="100",name="webserver",node="pve1",type="qemu",status="running",tags="production",lock=""} 1
+cv4pve_guest_info{id="101",name="database",node="pve2",type="qemu",status="running",tags="production",lock="backup"} 1
+```
+
+**Note:** The `lock` label shows why a VM/CT is locked (backup in progress, snapshot being created, etc.). This enhanced visibility is unique to cv4pve-metrics-exporter.
+
+#### CPU Metrics
+- `cv4pve_cpu_usage_ratio` - CPU usage ratio (0.0 to 1.0)
+- `cv4pve_cpu_usage_limit` - CPU limit (number of cores)
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### Memory Metrics
+- `cv4pve_memory_size_bytes` - Configured memory size
+- `cv4pve_memory_usage_bytes` - Current memory usage
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### Disk Metrics
+- `cv4pve_disk_size_bytes` - Total disk size
+- `cv4pve_disk_usage_bytes` - Current disk usage
+- `cv4pve_disk_read_bytes` - Total bytes read
+- `cv4pve_disk_write_bytes` - Total bytes written
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### Network Metrics
+- `cv4pve_network_transmit_bytes` - Total bytes transmitted
+- `cv4pve_network_receive_bytes` - Total bytes received
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### `cv4pve_uptime_seconds`
+Guest uptime in seconds.
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### Balloon Memory Metrics (QEMU VMs only)
+- `cv4pve_balloon_actual_bytes` - Actual balloon memory
+- `cv4pve_balloon_max_mem_bytes` - Maximum balloon memory
+- `cv4pve_balloon_last_update_bytes` - Last balloon update value
+
+**Labels:**
+- `id` - VM ID
+
+**Note:** Balloon memory allows dynamic memory management for QEMU VMs.
+
+#### `cv4pve_host_memory_usage_bytes`
+Host memory usage for guest.
+
+**Labels:**
+- `id` - VM/CT ID
+
+#### `cv4pve_onboot_status`
+Guest auto-start configuration. Value is 1 when onboot is enabled, 0 otherwise.
+
+**Labels:**
+- `id` - VM/CT ID
+
+---
 
 ### Storage Metrics
-- `cv4pve_storage_info` - Storage information (node, shared status)
+
+#### `cv4pve_storage_info`
+Storage information. Value is always 1.
+
+**Labels:**
+- `id` - Storage identifier
+- `node` - Node name (for local storage) or empty for shared storage
+- `shared` - Is shared storage (true/false)
+- `enabled` - Is storage enabled (true/false)
+- `active` - Is storage active (true/false)
+- `disk_size` - **Total disk size in bytes** (e.g., "1099511627776" for 1TB)
+- `disk_usage` - **Used disk space in bytes**
+
+**Example:**
+```
+cv4pve_storage_info{id="local-lvm",node="pve1",shared="false",enabled="true",active="true",disk_size="500000000000",disk_usage="250000000000"} 1
+cv4pve_storage_info{id="nfs-shared",node="",shared="true",enabled="true",active="true",disk_size="2000000000000",disk_usage="1200000000000"} 1
+```
+
+**Note:** Including disk size and usage in labels (rather than separate metrics) allows for better grouping and filtering in Prometheus queries. This is an enhanced feature of cv4pve-metrics-exporter.
+
+---
+
+### High Availability (HA) Metrics
+
+#### `cv4pve_ha_resource_info`
+High Availability resource information. Value is 1 when resource is started, 0 otherwise.
+
+**Labels:**
+- `sid` - Service ID (format: `vm:ID` or `ct:ID`)
+- `state` - HA state (e.g., "started", "stopped", "disabled")
+- `type` - Resource type: `vm` or `ct`
+- `group` - HA group name (if assigned)
+
+**Example:**
+```
+cv4pve_ha_resource_info{sid="vm:100",state="started",type="vm",group="ha-group1"} 1
+cv4pve_ha_resource_info{sid="ct:101",state="stopped",type="ct",group=""} 0
+```
+
+**Note:** HA resource monitoring is unique to cv4pve-metrics-exporter, allowing you to monitor HA configurations and state in Prometheus.
+
+---
 
 ### Replication Metrics
-- `cv4pve_replication_duration_seconds` - Replication duration
-- `cv4pve_replication_last_sync_timestamp_seconds` - Last successful sync
-- `cv4pve_replication_last_try_timestamp_seconds` - Last sync attempt
-- `cv4pve_replication_next_sync_timestamp_seconds` - Next scheduled sync
-- `cv4pve_replication_failed_syncs` - Failed sync count
+
+#### `cv4pve_replication_duration_seconds`
+Duration of last replication job in seconds.
+
+**Labels:**
+- `guest` - Guest ID (VM/CT)
+- `id` - Replication job ID
+- `jobnum` - Job number
+- `source` - Source node
+- `target` - Target node
+
+#### `cv4pve_replication_last_sync_timestamp_seconds`
+Timestamp of last successful replication sync (Unix timestamp).
+
+**Labels:**
+- `guest` - Guest ID
+- `id` - Replication job ID
+- `jobnum` - Job number
+- `source` - Source node
+- `target` - Target node
+
+#### `cv4pve_replication_last_try_timestamp_seconds`
+Timestamp of last replication attempt (Unix timestamp).
+
+**Labels:**
+- `guest` - Guest ID
+- `id` - Replication job ID
+- `jobnum` - Job number
+- `source` - Source node
+- `target` - Target node
+
+#### `cv4pve_replication_next_sync_timestamp_seconds`
+Timestamp of next scheduled replication sync (Unix timestamp).
+
+**Labels:**
+- `guest` - Guest ID
+- `id` - Replication job ID
+- `jobnum` - Job number
+- `source` - Source node
+- `target` - Target node
+
+#### `cv4pve_replication_failed_syncs`
+Number of failed replication syncs.
+
+**Labels:**
+- `guest` - Guest ID
+- `id` - Replication job ID
+- `jobnum` - Job number
+- `source` - Source node
+- `target` - Target node
+
+**Example:**
+```
+cv4pve_replication_duration_seconds{guest="100",id="100-0",jobnum="0",source="pve1",target="pve2"} 45.2
+cv4pve_replication_failed_syncs{guest="100",id="100-0",jobnum="0",source="pve1",target="pve2"} 0
+```
+
+---
+
+### Key Differences from prometheus-pve-exporter
+
+cv4pve-metrics-exporter provides several enhancements over the standard prometheus-pve-exporter:
+
+1. **Lock Status Visibility**: The `lock` label in `cv4pve_guest_info` shows why a VM/CT is locked (backup, snapshot, migrate, etc.)
+
+2. **Subscription Monitoring**: `cv4pve_node_subscription_info` tracks subscription status and support level for each node
+
+3. **Storage in Labels**: Disk size and usage are included as labels in `cv4pve_storage_info` for better query flexibility
+
+4. **HA Resource Monitoring**: `cv4pve_ha_resource_info` provides visibility into High Availability configurations
+
+5. **SMART Disk Health**: Comprehensive disk health metrics including wearout indicators
+
+6. **Native C# Implementation**: Better performance and cross-platform support
+
+7. **Service Mode**: Built-in support for running as a system service with proper lifecycle management
+
+8. **Flexible Deployment**: Single binary with no runtime dependencies
 
 ---
 
