@@ -3,16 +3,13 @@
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
  */
 
+using Corsinvest.ProxmoxVE.Api;
+using Corsinvest.ProxmoxVE.Metrics.Exporter.Api;
+
+namespace Corsinvest.ProxmoxVE.Metrics.Exporter;
+
 internal sealed class MetricsServiceOptions
 {
-    public string Host { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string? Password { get; set; }
-    public string? ApiToken { get; set; }
-    public bool ValidateCertificate { get; set; }
-    public string HttpHost { get; set; } = string.Empty;
-    public int HttpPort { get; set; }
-    public string HttpUrl { get; set; } = string.Empty;
-    public string Prefix { get; set; } = string.Empty;
-    public bool ServiceMode { get; set; }
+    public Func<Task<PveClient>> ClientFactory { get; set; } = null!;
+    public Settings Settings { get; set; } = new();
 }

@@ -14,699 +14,490 @@ Metrics Exporter for Proxmox VE (Made in Italy)
 [![Release](https://img.shields.io/github/release/Corsinvest/cv4pve-metrics-exporter.svg?style=flat-square)](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Corsinvest/cv4pve-metrics-exporter/total.svg?style=flat-square&logo=download)](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases)
 [![NuGet](https://img.shields.io/nuget/v/Corsinvest.ProxmoxVE.Metrics.Exporter.Api.svg?style=flat-square&logo=nuget)](https://www.nuget.org/packages/Corsinvest.ProxmoxVE.Metrics.Exporter.Api/)
+[![WinGet](https://img.shields.io/winget/v/Corsinvest.cv4pve.metrics-exporter?style=flat-square&logo=windows)](https://winstall.app/apps/Corsinvest.cv4pve.metrics-exporter)
+[![AUR](https://img.shields.io/aur/version/cv4pve-metrics-exporter?style=flat-square&logo=archlinux)](https://aur.archlinux.org/packages/cv4pve-metrics-exporter)
+
+> Exports Proxmox VE cluster metrics to Prometheus — nodes, VMs, containers, storage, HA, replication, subscription, SMART.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Download latest release
 wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-linux-x64.zip
 unzip cv4pve-metrics-exporter-linux-x64.zip
-chmod +x cv4pve-metrics-exporter
-
-# Run Prometheus exporter
-./cv4pve-metrics-exporter --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD prometheus
+./cv4pve-metrics-exporter --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD run
 ```
+
+With API token (recommended):
+
+```bash
+./cv4pve-metrics-exporter --host=YOUR_HOST --api-token=user@realm!token=uuid run
+```
+
+Scrape endpoint: `http://localhost:9221/metrics/`
+
+---
+
+## Profiles
+
+| Profile | Use case | API calls per scrape |
+|---------|----------|---------------------|
+| **Fast** | Large clusters, lightweight scraping | lowest |
+| **Standard** | Daily monitoring, balanced | medium |
+| **Full** | Full observability, small/medium clusters | highest |
+
+```bash
+cv4pve-metrics-exporter --host=YOUR_HOST --api-token=... run           # Standard (default)
+cv4pve-metrics-exporter --host=YOUR_HOST --api-token=... run --fast    # Fast
+cv4pve-metrics-exporter --host=YOUR_HOST --api-token=... run --full    # Full
+```
+
+<details>
+<summary><strong>Profiles comparison</strong></summary>
+
+| Setting | Fast | Standard | Full |
+|---------|:----:|:--------:|:----:|
+| **Cluster** | | | |
+| HA state | ✓ (no cache) | ✓ (no cache) | ✓ (cache 30s) |
+| BackupInfo | ✓ (no cache) | ✓ (cache 10m) | ✓ (cache 10m) |
+| **Node** | | | |
+| Status (memory/swap/load/uptime + version) | | ✓ | ✓ |
+| Subscription | | ✓ (cache 1h) | ✓ (cache 1h) |
+| Replication | | ✓ (no cache) | ✓ (cache 1m) |
+| DiskSmart | | | ✓ (cache 10m) |
+| **Guest** | | | |
+| Balloon (1 RPC per running QEMU) | | | ✓ |
+| **Other** | | | |
+| API instrumentation | | ✓ | ✓ |
+
+> Fast profile skips all per-node calls — good for very large clusters where scrape latency matters more than per-node detail.
+
+</details>
 
 ---
 
 ## Features
 
-### Core Capabilities
-
-#### **Performance & Reliability**
-- **Native C#** implementation
-- **Cross-platform** (Windows, Linux, macOS)
-- **API-based** operation (no root access required)
-- **Cluster support** with automatic resource resolution
-- **High availability** with multiple host support
-
-#### **Prometheus Integration**
-- **Full metrics export** for monitoring and alerting
-- **Customizable endpoint** (host, port, URL path)
-- **Rich metrics** covering nodes, VMs, containers, storage, and replication
-- **Label-based organization** for easy filtering and querying
-
-#### **Enterprise Features**
-- **API token** support (Proxmox VE 6.2+)
-- **SSL validation** options
-- **Multiple host** support for HA
-- **Error resilience** with comprehensive logging
-- **Service mode** for production deployments
+- **Lock visibility** — `cv4pve_guest_lock{state}` exploded series for clean alerting (backup, snapshot, migrate, …)
+- **Subscription monitoring** — info, exploded status and next due date
+- **HA state** — exploded series for both guests (`cv4pve_ha_state`) and nodes (`cv4pve_ha_node_state`), plus `cv4pve_ha_quorate`
+- **Replication on every node** — full cluster coverage
+- **SMART disk health** — wearout and health per disk (opt-in, cached)
+- **Node version per node** — `cv4pve_node_version_info` with version/release/repoid
+- **Overcommit detection** — `cv4pve_node_cpu_assigned_cores` and `cv4pve_node_memory_assigned_bytes`
+- **Backup compliance** — per-guest `cv4pve_not_backed_up_info` + cluster-wide `cv4pve_guests_not_backed_up`
+- **API instrumentation** — per-endpoint duration histogram and error counter, with normalized paths
+- **Self-monitoring** — `cv4pve_scrape_duration_seconds` + `cv4pve_scrape_errors_total{section}`
+- **Per-collector cache TTL** — slow-changing data (SMART, subscription) cached to minimize Proxmox API load
+- **Native C#** — single binary, cross-platform (Linux, Windows, macOS), no runtime dependencies
+- **Native service support** — `systemd` (`Type=notify`) and Windows Services (no wrapper required)
+- **Profile-driven** — `Fast`/`Standard`/`Full` profiles or full `settings.json` for fine-grained control
 
 ---
 
 ## Installation
 
-### Linux Installation
+| Platform | Command |
+|----------|---------|
+| **Linux** | `wget .../cv4pve-metrics-exporter-linux-x64.zip && unzip cv4pve-metrics-exporter-linux-x64.zip && chmod +x cv4pve-metrics-exporter` |
+| **Windows WinGet** | `winget install Corsinvest.cv4pve.metrics-exporter` |
+| **Windows manual** | Download `cv4pve-metrics-exporter-win-x64.zip` from [Releases](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases) |
+| **Arch Linux** | `yay -S cv4pve-metrics-exporter` |
+| **Debian/Ubuntu** | `sudo dpkg -i cv4pve-metrics-exporter-VERSION-ARCH.deb` |
+| **RHEL/Fedora** | `sudo rpm -i cv4pve-metrics-exporter-VERSION-ARCH.rpm` |
+| **macOS Homebrew** | `brew install corsinvest/tap/cv4pve-metrics-exporter` |
+| **macOS manual** | `wget .../cv4pve-metrics-exporter-osx-x64.zip && unzip cv4pve-metrics-exporter-osx-x64.zip && chmod +x cv4pve-metrics-exporter` |
+
+All binaries on the [Releases page](https://github.com/Corsinvest/cv4pve-metrics-exporter/releases).
+
+### Required Permissions
+
+| Permission | Purpose | Scope |
+|------------|---------|-------|
+| **VM.Audit** | Read VM/CT configuration and status | Virtual machines |
+| **Datastore.Audit** | Read storage metrics | Storage systems |
+| **Sys.Audit** | Node status, disks, subscription, replication | Cluster nodes |
+
+### Create an API Token
 
 ```bash
-# Check available releases and get the specific version number
-# Visit: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
+# Create dedicated user (recommended)
+pveum user add metrics@pve
 
-# Download specific version (replace VERSION with actual version like v1.5.0)
-wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-linux-x64.zip
+# Grant read-only permissions
+pveum aclmod / -user metrics@pve -role PVEAuditor
 
-# Alternative: Get latest release URL programmatically
-LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-metrics-exporter/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
-wget "$LATEST_URL"
-
-# Extract and make executable
-unzip cv4pve-metrics-exporter-linux-x64.zip
-chmod +x cv4pve-metrics-exporter
-
-# Optional: Move to system path
-sudo mv cv4pve-metrics-exporter /usr/local/bin/
-```
-
-### Windows Installation
-
-#### Option 1: Winget (Recommended)
-
-```powershell
-# Install using Windows Package Manager
-winget install Corsinvest.cv4pve.metrics-exporter
-```
-
-#### Option 2: Manual Installation
-
-```powershell
-# Check available releases at: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
-# Download specific version (replace VERSION with actual version)
-Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter.exe-win-x64.zip" -OutFile "cv4pve-metrics-exporter.zip"
-
-# Extract
-Expand-Archive cv4pve-metrics-exporter.zip -DestinationPath "C:\Tools\cv4pve-metrics-exporter"
-
-# Add to PATH (optional)
-$env:PATH += ";C:\Tools\cv4pve-metrics-exporter"
-```
-
-### macOS Installation
-
-```bash
-# Check available releases at: https://github.com/Corsinvest/cv4pve-metrics-exporter/releases
-# Download specific version (replace VERSION with actual version)
-wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/download/VERSION/cv4pve-metrics-exporter-osx-x64.zip
-unzip cv4pve-metrics-exporter-osx-x64.zip
-chmod +x cv4pve-metrics-exporter
-
-# Move to applications
-sudo mv cv4pve-metrics-exporter /usr/local/bin/
+# Create token (save the secret — shown only once!)
+pveum user token add metrics@pve metrics --privsep 0
 ```
 
 ---
 
-## Configuration
+## Running as a Service
 
-### Command Line Options
+The binary is **service-aware out of the box** — it integrates natively with both `systemd` (Linux) and Windows SCM. Run it interactively during development, then promote the same binary to a managed service in production without any wrapper.
 
-```text
-Usage:
-  cv4pve-metrics-exporter [options] [command]
+### Linux (systemd)
 
-Options:
-  --host <host> (REQUIRED)    The host name host[:port],host1[:port],host2[:port]
-  --username <username>       User name <username>@<realm>
-  --password <password>       The password. Specify 'file:path_file' to store password in file.
-  --api-token <api-token>     Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
-  --validate-certificate      Validate SSL Certificate Proxmox VE node.
-  --service-mode              Run as background service (runs until stopped, no Enter key)
-  --version                   Show version information
-  -?, -h, --help              Show help and usage information
-
-Commands:
-  prometheus  Export for Prometheus
-```
-
-### Prometheus Command Options
-
-```text
-Options:
-  --http-host <http-host>    Http host (default: localhost)
-  --http-port <http-port>    Http port (default: 9221)
-  --http-url <http-url>      Http url (default: metrics/)
-  --prefix <prefix>          Prefix export (default: cv4pve)
-```
-
-### Usage Examples
-
-```bash
-# Basic usage with username/password
-cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD prometheus
-
-# Using API token (recommended)
-cv4pve-metrics-exporter --host=192.168.0.100 --api-token=metrics-user@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx prometheus
-
-# Multiple hosts for HA
-cv4pve-metrics-exporter --host=pve1.local:8006,pve2.local:8006,pve3.local:8006 --username=root@pam --password=YOUR_PASSWORD prometheus
-
-# Custom Prometheus endpoint
-cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD prometheus --http-host=0.0.0.0 --http-port=9090 --http-url=pve-metrics/
-
-# Using password from file
-echo "YOUR_PASSWORD" > /etc/cv4pve/password
-cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=file:/etc/cv4pve/password prometheus
-
-# With SSL certificate validation
-cv4pve-metrics-exporter --host=192.168.0.100 --username=root@pam --password=YOUR_PASSWORD --validate-certificate prometheus
-```
-
----
-
-## Deployment Options
-
-### Console Mode (Default)
-
-Run the exporter in interactive mode. The exporter will wait for you to press Enter to stop.
-
-```bash
-./cv4pve-metrics-exporter --host=pve.local --username=root@pam --password=YOUR_PASSWORD prometheus
-# Metrics exporter is running. Press Enter to stop...
-```
-
-**Best for:** Development, testing, and debugging.
-
-### Service Mode
-
-Run the exporter as a background service without console interaction. The exporter will continue running until stopped with Ctrl+C.
-
-```bash
-./cv4pve-metrics-exporter --host=pve.local --username=root@pam --password=YOUR_PASSWORD --service-mode prometheus
-# Exporter is running in background. Press Ctrl+C to stop.
-```
-
-**Best for:** Production environments where you want the exporter to run continuously.
-
-### Windows Service with NSSM
-
-For Windows systems, use NSSM (Non-Sucking Service Manager) to run the exporter as a proper Windows service.
-
-```powershell
-# Download NSSM: https://nssm.cc/download
-# Install the service
-nssm install cv4pve-metrics-exporter "C:\Tools\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe" `
-  --host=pve.local `
-  --api-token=metrics@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx `
-  --service-mode `
-  prometheus `
-  --http-host=0.0.0.0
-
-# Start the service
-nssm start cv4pve-metrics-exporter
-
-# View logs
-nssm tail cv4pve-metrics-exporter
-
-# Stop the service
-nssm stop cv4pve-metrics-exporter
-
-# Uninstall the service
-nssm remove cv4pve-metrics-exporter confirm
-```
-
-### Linux Systemd Service
-
-For Linux systems, create a systemd service file.
-
-```bash
-# Create service file
-sudo nano /etc/systemd/system/cv4pve-metrics-exporter.service
-```
-
-Add the following configuration:
+Supports `Type=notify` — systemd is informed when the exporter is ready and gets proper graceful shutdown on `systemctl stop`.
 
 ```ini
+# /etc/systemd/system/cv4pve-metrics-exporter.service
 [Unit]
 Description=Proxmox VE Metrics Exporter for Prometheus
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-Type=simple
-ExecStart=/usr/local/bin/cv4pve-metrics-exporter --host=pve.local --api-token=metrics@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --service-mode prometheus --http-host=0.0.0.0
-Restart=always
-RestartSec=10
+Type=notify
 User=prometheus
 Group=prometheus
+ExecStart=/usr/local/bin/cv4pve-metrics-exporter \
+  --host=pve.local \
+  --api-token=metrics@pve!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+  --settings-file=/etc/cv4pve/metrics-exporter.json \
+  run
+Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Enable and start the service:
+Enable and start:
 
 ```bash
-# Create user
+# Create a dedicated unprivileged user (optional)
 sudo useradd -r -s /bin/false prometheus
 
-# Enable and start service
+# Place the settings file somewhere the service user can read
+sudo install -d /etc/cv4pve
+sudo install -m 640 -o root -g prometheus settings.json /etc/cv4pve/metrics-exporter.json
+
 sudo systemctl daemon-reload
-sudo systemctl enable cv4pve-metrics-exporter
-sudo systemctl start cv4pve-metrics-exporter
-
-# Check status
+sudo systemctl enable --now cv4pve-metrics-exporter
 sudo systemctl status cv4pve-metrics-exporter
-
-# View logs
 sudo journalctl -u cv4pve-metrics-exporter -f
 ```
 
-### Service Mode vs Console Mode
+> **Note:** always use **absolute paths** for `--settings-file` — systemd does not set a working directory by default.
 
-| Feature | Console Mode (Default) | Service Mode (`--service-mode`) |
-|---------|------------------------|--------------------------------|
-| **Interactive Stop** | ✅ Press Enter to stop | ❌ Use Ctrl+C or system stop |
-| **Console Output** | ✅ Full logging to console | ✅ Full logging to console |
-| **Runs in Background** | ❌ Waits for Enter key | ✅ Runs until stopped |
-| **Systemd Integration** | ⚠️ Limited | ✅ Full support with auto-restart |
-| **NSSM Integration** | ⚠️ Limited | ✅ Full support with auto-restart |
-| **Error Handling** | ✅ Exits on fatal errors | ✅ Exits on fatal errors |
-| **Best For** | Development, Testing | Production, Services |
+### Windows (native service)
+
+The binary integrates with Windows SCM directly.
+
+```powershell
+# Install as a Windows service
+sc.exe create cv4pve-metrics-exporter `
+  binPath= "C:\Tools\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe --host=pve.local --api-token=metrics@pve!metrics=xxx --settings-file=C:\ProgramData\cv4pve\metrics-exporter.json run" `
+  start= auto `
+  DisplayName= "Corsinvest Proxmox VE Metrics Exporter"
+
+# Start / stop
+sc.exe start cv4pve-metrics-exporter
+sc.exe stop cv4pve-metrics-exporter
+
+# View logs in Event Viewer → Windows Logs → Application
+```
+
+> **Note on quoting:** `sc.exe` is picky — the space after `binPath=` and around each `=` is required.
+
+### Docker
+
+Run the binary in a minimal container — no special flags needed, SIGTERM is handled.
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
+COPY cv4pve-metrics-exporter /usr/local/bin/
+EXPOSE 9221
+ENTRYPOINT ["/usr/local/bin/cv4pve-metrics-exporter"]
+CMD ["run"]
+```
+
+```bash
+docker run -d --name pve-metrics \
+  -p 9221:9221 \
+  -v /etc/cv4pve:/config:ro \
+  cv4pve-metrics-exporter \
+  --host=pve.local \
+  --api-token=metrics@pve!metrics=xxx \
+  --settings-file=/config/metrics-exporter.json \
+  run
+```
+
+Remember to bind to `0.0.0.0` (via `Host` in `settings.json`) when exposing outside the container.
+
+### Prometheus scrape config
+
+```yaml
+scrape_configs:
+  - job_name: proxmox
+    static_configs:
+      - targets: ['exporter-host:9221']
+```
+
+---
+
+## Settings Reference
+
+Customize the exporter by creating and editing a `settings.json` file:
+
+```bash
+# Step 1 — generate a settings file (pick your starting profile)
+cv4pve-metrics-exporter create-settings          # Standard (default)
+cv4pve-metrics-exporter create-settings --fast   # Fast
+cv4pve-metrics-exporter create-settings --full   # Full
+
+# Step 2 — edit settings.json to your needs
+
+# Step 3 — run with your custom settings
+cv4pve-metrics-exporter --host=YOUR_HOST --api-token=... --settings-file=settings.json run
+```
+
+Each collector exposes two knobs:
+- `Enabled` — turn the collector on/off
+- `CacheSeconds` — TTL of the cached result (0 = always refresh)
+
+Cache is the recommended way to keep slow-changing data (SMART, subscription, backup info) up-to-date without hammering the Proxmox API on every scrape.
+
+<details>
+<summary><strong>Full settings.json with all defaults (Standard profile)</strong></summary>
+
+```jsonc
+{
+  "Prometheus": {
+    "Enabled": true,                    // enable the Prometheus exporter
+    "Host": "localhost",                // HTTP listener host (0.0.0.0 to expose publicly)
+    "Port": 9221,                       // HTTP listener port
+    "Url": "metrics/",                  // HTTP URL path
+    "MaxParallelRequests": 5,           // parallel API requests per scrape
+    "ApiInstrumentation": true,         // per-endpoint API duration histogram + errors counter
+    "Cluster": {
+      "Ha":         { "Enabled": true,  "CacheSeconds": 0 },
+      "BackupInfo": { "Enabled": true,  "CacheSeconds": 600 }
+    },
+    "Node": {
+      "Status":       { "Enabled": true,  "CacheSeconds": 0 },     // memory/swap/load + version
+      "Subscription": { "Enabled": true,  "CacheSeconds": 3600 },  // status + next due
+      "Replication":  { "Enabled": true,  "CacheSeconds": 0 },
+      "DiskSmart":    { "Enabled": false, "CacheSeconds": 0 }      // opt-in (1 call per node)
+    },
+    "Guest": {
+      "Balloon":      { "Enabled": false, "CacheSeconds": 0 }      // opt-in (1 RPC per running QEMU)
+    }
+  }
+}
+```
+
+</details>
+
+---
+
+## Response Files
+
+Arguments can be stored in a response file and referenced with `@filename`. This is useful to avoid repeating connection parameters on every run.
+
+```text
+# config.rsp
+--host
+192.168.1.1
+--api-token
+user@pam!metrics=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+```bash
+cv4pve-metrics-exporter @config.rsp run
+cv4pve-metrics-exporter @config.rsp --settings-file=settings.json run
+cv4pve-metrics-exporter @config.rsp run --full
+```
+
+- One token per line (option name and value on separate lines)
+- Lines starting with `#` are comments
+- Response files can be nested: a line starting with `@` references another file
 
 ---
 
 ## Exported Metrics
 
-The exporter provides comprehensive metrics about your Proxmox VE environment. All metrics use the configurable prefix (default: `cv4pve`).
+All metrics are prefixed with `cv4pve_`.
 
-### Status & Availability Metrics
+<details>
+<summary><strong>Show all exported metrics</strong></summary>
 
-#### `cv4pve_up`
-Resource availability status (1 = available/running, 0 = unavailable/stopped).
+### Core (always on)
 
-**Labels:**
-- `id` - Resource identifier (node name, storage ID, or VM/CT ID)
-- `type` - Resource type: `node`, `storage`, `qemu` (VM), `lxc` (container)
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_up` | gauge | `id`, `type` | 1 if resource is online/running/available |
+| `cv4pve_cluster_info` | gauge | `name`, `version` | Cluster info (always 1) |
+| `cv4pve_cluster_quorate` | gauge | `name` | 1 if cluster is quorate |
+| `cv4pve_cluster_nodes` | gauge | `name` | Number of nodes in the cluster |
+| `cv4pve_node_info` | gauge | `id`, `name`, `ip`, `level` | Node info (always 1) |
+| `cv4pve_guest_info` | gauge | `id`, `vmid`, `node`, `name`, `type`, `tags`, `template` | VM/CT info (always 1, `tags` sorted to prevent churn) |
+| `cv4pve_guest_lock` | gauge | `id`, `state` | 1 if guest matches lock state — `backup`/`clone`/`create`/`migrate`/`rollback`/`snapshot`/`snapshot-delete`/`suspended`/`suspending` |
+| `cv4pve_storage_info` | gauge | `id`, `node`, `storage`, `content` | Storage info (always 1, `content` is sorted CSV) |
+| `cv4pve_storage_shared` | gauge | `id` | 1 if storage is shared across nodes |
 
-**Example:**
-```
-cv4pve_up{id="pve1",type="node"} 1
-cv4pve_up{id="100",type="qemu"} 1
-cv4pve_up{id="local-lvm",type="storage"} 1
-```
+### Self-monitoring (always on)
 
----
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_scrape_duration_seconds` | gauge | — | Duration of the last scrape |
+| `cv4pve_scrape_last_success_timestamp_seconds` | gauge | — | Unix timestamp of the last successful scrape |
+| `cv4pve_scrape_errors_total` | counter | `section` | Total number of errors per scrape section |
 
-### Cluster Metrics
+### Guest (per VM/CT, always on)
 
-#### `cv4pve_cluster_info`
-Cluster-wide information. Value is always 1 when cluster is accessible.
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_guest_cpu_usage_ratio` | gauge | `id` | CPU usage (0..1) |
+| `cv4pve_guest_cpu_cores` | gauge | `id` | CPU cores allocated |
+| `cv4pve_guest_memory_size_bytes` | gauge | `id` | Configured memory |
+| `cv4pve_guest_memory_usage_bytes` | gauge | `id` | Used memory |
+| `cv4pve_guest_memory_host_ratio` | gauge | `id` | Guest memory usage over host total (0..1) |
+| `cv4pve_guest_disk_size_bytes` | gauge | `id` | Disk total size |
+| `cv4pve_guest_disk_usage_bytes` | gauge | `id` | Disk used |
+| `cv4pve_guest_uptime_seconds` | gauge | `id` | Uptime |
+| `cv4pve_guest_disk_read_bytes_total` | counter | `id` | Total bytes read |
+| `cv4pve_guest_disk_write_bytes_total` | counter | `id` | Total bytes written |
+| `cv4pve_guest_network_receive_bytes_total` | counter | `id` | Total bytes received |
+| `cv4pve_guest_network_transmit_bytes_total` | counter | `id` | Total bytes transmitted |
 
-**Labels:**
-- `name` - Cluster name
-- `nodes` - Total number of nodes
-- `quorate` - Quorum status (1 = quorate, 0 = not quorate)
-- `version` - Proxmox VE version
+### Storage (per storage, always on)
 
-**Example:**
-```
-cv4pve_cluster_info{name="proxmox",nodes="3",quorate="1",version="8.2"} 1
-```
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_storage_size_bytes` | gauge | `id` | Storage total size |
+| `cv4pve_storage_usage_bytes` | gauge | `id` | Storage used |
 
----
+### Node Status (if `Node.Status` enabled)
 
-### Node Metrics
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_node_uptime_seconds` | gauge | `node` | Uptime |
+| `cv4pve_node_load_avg1` | gauge | `node` | Load average 1 min |
+| `cv4pve_node_load_avg5` | gauge | `node` | Load average 5 min |
+| `cv4pve_node_load_avg15` | gauge | `node` | Load average 15 min |
+| `cv4pve_node_memory_used_bytes` | gauge | `node` | Memory used |
+| `cv4pve_node_memory_total_bytes` | gauge | `node` | Memory total |
+| `cv4pve_node_memory_assigned_bytes` | gauge | `node` | Sum of configured memory of running guests on this node |
+| `cv4pve_node_swap_used_bytes` | gauge | `node` | Swap used |
+| `cv4pve_node_swap_total_bytes` | gauge | `node` | Swap total |
+| `cv4pve_node_root_fs_used_bytes` | gauge | `node` | Root FS used |
+| `cv4pve_node_root_fs_total_bytes` | gauge | `node` | Root FS total |
+| `cv4pve_node_cpu_assigned_cores` | gauge | `node` | Sum of CPU cores allocated to running guests |
+| `cv4pve_node_version_info` | gauge | `node`, `version`, `release`, `repoid` | Node Proxmox VE version (always 1) |
 
-#### `cv4pve_node_info`
-Node information and status. Value is always 1.
+### Subscription (if `Node.Subscription` enabled)
 
-**Labels:**
-- `name` - Node name
-- `ip` - Node IP address
-- `level` - Support level
-- `local` - Is local node (true/false)
-- `online` - Node online status (true/false)
-- `status` - Node status
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_node_subscription_info` | gauge | `node`, `level` | Subscription info (always 1) |
+| `cv4pve_node_subscription_status` | gauge | `node`, `status` | 1 if matches status — `active`/`expired`/`new`/`notfound`/`invalid`/`suspended` |
+| `cv4pve_node_subscription_next_due_timestamp_seconds` | gauge | `node` | Next due date as Unix timestamp |
 
-**Example:**
-```
-cv4pve_node_info{name="pve1",ip="192.168.1.10",level="c",local="true",online="true",status="online"} 1
-```
+### Replication (if `Node.Replication` enabled)
 
-#### `cv4pve_node_subscription_info`
-Node subscription status. Value is 1 when subscription is active, 0 otherwise.
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_replication_duration_seconds` | gauge | `id`, `type`, `source`, `target`, `guest` | Last replication duration |
+| `cv4pve_replication_last_sync_timestamp_seconds` | gauge | same | Last successful sync |
+| `cv4pve_replication_next_sync_timestamp_seconds` | gauge | same | Next scheduled sync |
+| `cv4pve_replication_failed_total` | counter | same | Failed replication count |
 
-**Labels:**
-- `node` - Node name
-- `status` - Subscription status (e.g., "active", "inactive", "notfound")
-- `level` - Support level (e.g., "community", "basic", "standard", "premium")
+### SMART (if `Node.DiskSmart` enabled)
 
-**Example:**
-```
-cv4pve_node_subscription_info{node="pve1",status="active",level="standard"} 1
-```
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_node_disk_health` | gauge | `node`, `serial`, `type`, `dev_path` | 1 if SMART PASSED |
+| `cv4pve_node_disk_wearout` | gauge | same | Wearout percentage (0..100) |
 
-**Note:** This metric provides subscription visibility, which is not available in prometheus-pve-exporter.
+### HA (always on)
 
-#### `cv4pve_node_disk_smart_health`
-Disk SMART health status from wearout indicator.
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_ha_state` | gauge | `sid`, `type`, `group`, `state` | 1 if guest matches state |
+| `cv4pve_ha_node_state` | gauge | `node`, `state` | 1 if node matches HA state |
+| `cv4pve_ha_quorate` | gauge | — | 1 if the HA manager reports quorum |
 
-**Labels:**
-- `node` - Node name
-- `disk` - Disk device name (e.g., "/dev/sda")
+Guest `state` values: `stopped`, `request_stop`, `request_start`, `request_start_balance`, `started`, `fence`, `recovery`, `migrate`, `relocate`, `freeze`, `error`, `disabled`.
+Node `state` values: `online`, `maintenance`, `unknown`, `fence`, `gone`.
 
-**Example:**
-```
-cv4pve_node_disk_smart_health{node="pve1",disk="/dev/sda"} 98
-```
+### Backup (always on)
 
-#### `cv4pve_node_disk_smart_wearout`
-Disk wear level percentage from SMART data.
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_guests_not_backed_up` | gauge | — | Number of guests not covered by any backup job |
+| `cv4pve_not_backed_up_info` | gauge | `id` | 1 if guest is not covered by any backup job |
 
-**Labels:**
-- `node` - Node name
-- `disk` - Disk device name
+### Balloon (if `Guest.Balloon` enabled)
 
-**Example:**
-```
-cv4pve_node_disk_smart_wearout{node="pve1",disk="/dev/nvme0n1"} 5
-```
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_guest_balloon_actual_bytes` | gauge | `id`, `vmid` | QEMU balloon actual memory |
 
-#### `cv4pve_node_load_avg1`, `cv4pve_node_load_avg5`, `cv4pve_node_load_avg15`
-Node load averages over 1, 5, and 15 minutes.
+### API Instrumentation (if `ApiInstrumentation = true`)
 
-**Labels:**
-- `id` - Node name
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `cv4pve_api_request_duration_seconds` | histogram | `method`, `endpoint` | Duration of Proxmox API requests (path is normalized: `{node}`, `{vmid}`, `{upid}`) |
+| `cv4pve_api_request_errors_total` | counter | `method`, `endpoint` | Failed Proxmox API requests |
 
-**Example:**
-```
-cv4pve_node_load_avg1{id="pve1"} 0.45
-cv4pve_node_load_avg5{id="pve1"} 0.38
-cv4pve_node_load_avg15{id="pve1"} 0.42
-```
-
-#### `cv4pve_node_uptime_seconds`
-Node uptime in seconds.
-
-**Labels:**
-- `id` - Node name
-
-#### Node Memory Metrics
-- `cv4pve_node_memory_used_bytes` - Used memory
-- `cv4pve_node_memory_total_bytes` - Total memory
-- `cv4pve_node_memory_free_bytes` - Free memory
-
-**Labels:**
-- `id` - Node name
-
-#### Node Swap Metrics
-- `cv4pve_node_swap_used_bytes` - Used swap space
-- `cv4pve_node_swap_total_bytes` - Total swap space
-- `cv4pve_node_swap_free_bytes` - Free swap space
-
-**Labels:**
-- `id` - Node name
-
-#### Node Root Filesystem Metrics
-- `cv4pve_node_root_fs_used_bytes` - Used root filesystem space
-- `cv4pve_node_root_fs_total_bytes` - Total root filesystem space
-- `cv4pve_node_root_fs_free_bytes` - Free root filesystem space
-
-**Labels:**
-- `id` - Node name
+</details>
 
 ---
 
-### Guest (VM/CT) Metrics
+## Performance Tuning
 
-#### `cv4pve_guest_info`
-Guest (VM or container) information. Value is always 1.
+### Increase parallelism
 
-**Labels:**
-- `id` - VM/CT ID
-- `name` - VM/CT name
-- `node` - Node hosting the guest
-- `type` - Guest type: `qemu` (VM) or `lxc` (container)
-- `status` - Current status (e.g., "running", "stopped")
-- `tags` - Tags assigned to the guest
-- `lock` - **Lock status** (e.g., "backup", "snapshot", "migrate", or empty if not locked)
+By default the exporter runs up to **5 parallel API requests** per scrape (`MaxParallelRequests = 5`).
 
-**Example:**
-```
-cv4pve_guest_info{id="100",name="webserver",node="pve1",type="qemu",status="running",tags="production",lock=""} 1
-cv4pve_guest_info{id="101",name="database",node="pve2",type="qemu",status="running",tags="production",lock="backup"} 1
+```jsonc
+"MaxParallelRequests": 10
 ```
 
-**Note:** The `lock` label shows why a VM/CT is locked (backup in progress, snapshot being created, etc.). This enhanced visibility is unique to cv4pve-metrics-exporter.
+> **Don't go too high.** Each parallel request is a real HTTP call to Proxmox. Values between 5 and 15 are a reasonable range. On very large clusters, prefer the `Fast` profile or aggressive cache TTL over increasing parallelism.
 
-#### CPU Metrics
-- `cv4pve_cpu_usage_ratio` - CPU usage ratio (0.0 to 1.0)
-- `cv4pve_cpu_usage_limit` - CPU limit (number of cores)
+### Cache TTL for slow-changing data
 
-**Labels:**
-- `id` - VM/CT ID
+Set `CacheSeconds` per collector to avoid hammering Proxmox on every scrape:
 
-#### Memory Metrics
-- `cv4pve_memory_size_bytes` - Configured memory size
-- `cv4pve_memory_usage_bytes` - Current memory usage
-
-**Labels:**
-- `id` - VM/CT ID
-
-#### Disk Metrics
-- `cv4pve_disk_size_bytes` - Total disk size
-- `cv4pve_disk_usage_bytes` - Current disk usage
-- `cv4pve_disk_read_bytes` - Total bytes read
-- `cv4pve_disk_write_bytes` - Total bytes written
-
-**Labels:**
-- `id` - VM/CT ID
-
-#### Network Metrics
-- `cv4pve_network_transmit_bytes` - Total bytes transmitted
-- `cv4pve_network_receive_bytes` - Total bytes received
-
-**Labels:**
-- `id` - VM/CT ID
-
-#### `cv4pve_uptime_seconds`
-Guest uptime in seconds.
-
-**Labels:**
-- `id` - VM/CT ID
-
-#### Balloon Memory Metrics (QEMU VMs only)
-- `cv4pve_balloon_actual_bytes` - Actual balloon memory
-- `cv4pve_balloon_max_mem_bytes` - Maximum balloon memory
-- `cv4pve_balloon_last_update_bytes` - Last balloon update value
-
-**Labels:**
-- `id` - VM ID
-
-**Note:** Balloon memory allows dynamic memory management for QEMU VMs.
-
-#### `cv4pve_host_memory_usage_bytes`
-Host memory usage for guest.
-
-**Labels:**
-- `id` - VM/CT ID
-
-#### `cv4pve_onboot_status`
-Guest auto-start configuration. Value is 1 when onboot is enabled, 0 otherwise.
-
-**Labels:**
-- `id` - VM/CT ID
-
----
-
-### Storage Metrics
-
-#### `cv4pve_storage_info`
-Storage information. Value is always 1.
-
-**Labels:**
-- `id` - Storage identifier
-- `node` - Node name (for local storage) or empty for shared storage
-- `shared` - Is shared storage (true/false)
-- `enabled` - Is storage enabled (true/false)
-- `active` - Is storage active (true/false)
-- `disk_size` - **Total disk size in bytes** (e.g., "1099511627776" for 1TB)
-- `disk_usage` - **Used disk space in bytes**
-
-**Example:**
-```
-cv4pve_storage_info{id="local-lvm",node="pve1",shared="false",enabled="true",active="true",disk_size="500000000000",disk_usage="250000000000"} 1
-cv4pve_storage_info{id="nfs-shared",node="",shared="true",enabled="true",active="true",disk_size="2000000000000",disk_usage="1200000000000"} 1
+```jsonc
+"Node": {
+  "DiskSmart":    { "Enabled": true, "CacheSeconds": 1800 },  // 30 min
+  "Subscription": { "Enabled": true, "CacheSeconds": 3600 }   // 1 h
+}
 ```
 
-**Note:** Including disk size and usage in labels (rather than separate metrics) allows for better grouping and filtering in Prometheus queries. This is an enhanced feature of cv4pve-metrics-exporter.
+The metric remains visible to Prometheus between refreshes — only the underlying API call is skipped.
 
----
+### Minimize API calls
 
-### High Availability (HA) Metrics
+The `Fast` profile skips all per-node toggles (Status, Subscription, Replication) — only the cluster-wide bulk calls plus HA. Ideal for very large clusters or high scrape frequencies.
 
-#### `cv4pve_ha_resource_info`
-High Availability resource information. Value is 1 when resource is started, 0 otherwise.
+### Debug API endpoints
 
-**Labels:**
-- `sid` - Service ID (format: `vm:ID` or `ct:ID`)
-- `state` - HA state (e.g., "started", "stopped", "disabled")
-- `type` - Resource type: `vm` or `ct`
-- `group` - HA group name (if assigned)
+Enable `ApiInstrumentation` (default on) and look at `cv4pve_api_request_duration_seconds` to identify which endpoints are slowest:
 
-**Example:**
-```
-cv4pve_ha_resource_info{sid="vm:100",state="started",type="vm",group="ha-group1"} 1
-cv4pve_ha_resource_info{sid="ct:101",state="stopped",type="ct",group=""} 0
+```promql
+# Average latency per endpoint over last 5 min
+rate(cv4pve_api_request_duration_seconds_sum[5m])
+  / rate(cv4pve_api_request_duration_seconds_count[5m])
+
+# p99 latency
+histogram_quantile(0.99, rate(cv4pve_api_request_duration_seconds_bucket[5m]))
 ```
 
-**Note:** HA resource monitoring is unique to cv4pve-metrics-exporter, allowing you to monitor HA configurations and state in Prometheus.
+### Summary
 
----
-
-### Replication Metrics
-
-#### `cv4pve_replication_duration_seconds`
-Duration of last replication job in seconds.
-
-**Labels:**
-- `guest` - Guest ID (VM/CT)
-- `id` - Replication job ID
-- `jobnum` - Job number
-- `source` - Source node
-- `target` - Target node
-
-#### `cv4pve_replication_last_sync_timestamp_seconds`
-Timestamp of last successful replication sync (Unix timestamp).
-
-**Labels:**
-- `guest` - Guest ID
-- `id` - Replication job ID
-- `jobnum` - Job number
-- `source` - Source node
-- `target` - Target node
-
-#### `cv4pve_replication_last_try_timestamp_seconds`
-Timestamp of last replication attempt (Unix timestamp).
-
-**Labels:**
-- `guest` - Guest ID
-- `id` - Replication job ID
-- `jobnum` - Job number
-- `source` - Source node
-- `target` - Target node
-
-#### `cv4pve_replication_next_sync_timestamp_seconds`
-Timestamp of next scheduled replication sync (Unix timestamp).
-
-**Labels:**
-- `guest` - Guest ID
-- `id` - Replication job ID
-- `jobnum` - Job number
-- `source` - Source node
-- `target` - Target node
-
-#### `cv4pve_replication_failed_syncs`
-Number of failed replication syncs.
-
-**Labels:**
-- `guest` - Guest ID
-- `id` - Replication job ID
-- `jobnum` - Job number
-- `source` - Source node
-- `target` - Target node
-
-**Example:**
-```
-cv4pve_replication_duration_seconds{guest="100",id="100-0",jobnum="0",source="pve1",target="pve2"} 45.2
-cv4pve_replication_failed_syncs{guest="100",id="100-0",jobnum="0",source="pve1",target="pve2"} 0
-```
-
----
-
-### Key Differences from prometheus-pve-exporter
-
-cv4pve-metrics-exporter provides several enhancements over the standard prometheus-pve-exporter:
-
-1. **Lock Status Visibility**: The `lock` label in `cv4pve_guest_info` shows why a VM/CT is locked (backup, snapshot, migrate, etc.)
-
-2. **Subscription Monitoring**: `cv4pve_node_subscription_info` tracks subscription status and support level for each node
-
-3. **Storage in Labels**: Disk size and usage are included as labels in `cv4pve_storage_info` for better query flexibility
-
-4. **HA Resource Monitoring**: `cv4pve_ha_resource_info` provides visibility into High Availability configurations
-
-5. **SMART Disk Health**: Comprehensive disk health metrics including wearout indicators
-
-6. **Native C# Implementation**: Better performance and cross-platform support
-
-7. **Service Mode**: Built-in support for running as a system service with proper lifecycle management
-
-8. **Flexible Deployment**: Single binary with no runtime dependencies
-
----
-
-## API Token Setup
-
-For Proxmox VE 6.2 and later, using API tokens is recommended:
-
-### Create API Token
-
-1. Log into Proxmox VE web interface
-2. Go to **Datacenter** → **Permissions** → **API Tokens**
-3. Click **Add**
-4. Fill in the details:
-   - **User**: `root@pam` (or create dedicated user)
-   - **Token ID**: `metrics`
-   - **Privilege Separation**: Uncheck for full permissions (or configure specific permissions)
-5. Click **Add**
-6. **Save the token secret** - it will only be shown once!
-
-### Required Permissions
-
-If using privilege separation, the token needs:
-
-- **Path**: `/`
-- **Role**: `PVEAuditor` (read-only access)
-
-```bash
-# Create dedicated user for metrics (optional)
-pveum user add metrics-user@pve
-
-# Create API token
-pveum user token add metrics-user@pve metrics --privsep 0
-
-# Or with privilege separation (more secure)
-pveum user token add metrics-user@pve metrics --privsep 1
-pveum aclmod / -user metrics-user@pve -role PVEAuditor
-```
-
----
-
-## Troubleshooting
-
-### Connection Issues
-
-```bash
-# Test connection to Proxmox VE API
-curl -k https://YOUR_HOST:8006/api2/json/version
-
-# Check if exporter is running
-curl http://localhost:9221/metrics/
-
-# Verify API token
-pveum user token list
-```
-
-### Common Issues
-
-**Issue**: `Connection refused`
-- Check firewall rules on Proxmox VE host (port 8006)
-- Verify network connectivity: `ping YOUR_HOST`
-
-**Issue**: `SSL certificate validation failed`
-- Use `--validate-certificate` only with valid SSL certificates
-- For self-signed certificates, omit this flag
-
-**Issue**: `Permission denied`
-- Verify API token or user has sufficient permissions
-- Check token hasn't expired: `pveum user token list`
-
-**Issue**: `Metrics not appearing in Prometheus`
-- Verify exporter endpoint: `curl http://localhost:9221/metrics/`
-- Check Prometheus scrape configuration
-- Review Prometheus logs: `journalctl -u prometheus -f`
+| Setting | Effect | Default |
+|---------|--------|---------|
+| `MaxParallelRequests` ↑ | Faster, but more load on Proxmox | 5 |
+| `*.CacheSeconds` ↑ | Fewer API calls for slow data, metrics held between refresh | 0 / 600 / 3600 (varies) |
+| `ApiInstrumentation` | Per-endpoint latency histograms — handy for tuning | on |
+| `Fast` profile | Skip all per-node calls | off |
 
 ---
 

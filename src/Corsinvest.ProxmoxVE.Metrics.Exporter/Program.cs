@@ -3,86 +3,91 @@
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
  */
 
+using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Console.Helpers;
-using Corsinvest.ProxmoxVE.Metrics.Exporter.Api;
+using Corsinvest.ProxmoxVE.Api.Extension.Utils;
+using Corsinvest.ProxmoxVE.Metrics.Exporter;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Settings = Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Settings;
 
-// Parse command line arguments using ConsoleHelper
-var app = ConsoleHelper.CreateApp("cv4pve-metrics-exporter", "Metrics Exporter for Proxmox VE");
-var optServiceMode = app.AddOption<bool>("--service-mode", "Run as background service (runs until stopped, no Enter key)");
+const string SettingsFileName = "settings.json";
 
-var cmd = app.AddCommand("prometheus", "Export for Prometheus");
+var app = ConsoleHelper.CreateApp("Metrics Exporter for Proxmox VE");
 
-var optHttpHost = cmd.AddOption<string>("--http-host", $"Http host");
-optHttpHost.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_HOST;
+var optSettingsFile = app.AddOption<string>("--settings-file", $"Settings file (default: {SettingsFileName})")
+                        .AddValidatorExistFile();
 
-var optHttpPort = cmd.AddOption<int>("--http-port", $"Http port");
-optHttpPort.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_PORT;
+// create-settings
+var cmdCreate = app.AddCommand("create-settings", $"Create settings file ({SettingsFileName})");
+var optCreateFast = cmdCreate.AddOption<bool>("--fast", "Use fast profile");
+var optCreateFull = cmdCreate.AddOption<bool>("--full", "Use full profile");
+var optCreateOutput = cmdCreate.AddOption<string>("--output|-o", $"Output file path (default: {SettingsFileName})");
 
-var optHttpUrl = cmd.AddOption<string>("--http-url", $"Http url");
-optHttpUrl.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_URL;
-
-var optPrefix = cmd.AddOption<string>("--prefix", $"Prefix export");
-optPrefix.DefaultValueFactory = (_) => PrometheusExporter.DEFAULT_PREFIX;
-
-cmd.SetAction(async (action) =>
+cmdCreate.SetAction((action) =>
 {
-    // Create host builder with dependency injection
-    var hostBuilder = Host.CreateDefaultBuilder()
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
+    var settings = action.GetValue(optCreateFast) ? Settings.Fast()
+                 : action.GetValue(optCreateFull) ? Settings.Full()
+                 : Settings.Standard();
 
-            // Apply same filtering as ConsoleHelper.CreateLoggerFactory
-            var logLevel = app.GetLogLevelFromDebug();
-            logging.AddFilter("Microsoft", LogLevel.Warning);
-            logging.AddFilter("System", LogLevel.Warning);
-            logging.AddFilter("Corsinvest.ProxmoxVE.Api.PveClientBase", logLevel);
-            logging.SetMinimumLevel(logLevel);
-        })
-        .ConfigureServices((context, services) =>
-        {
-            // Register metrics exporter configuration options
-            services.AddSingleton(new MetricsServiceOptions
-            {
-                Host = action.GetValue(app.GetHostOption())!,
-                Username = action.GetValue(app.GetUsernameOption())!,
-                Password = app.GetPasswordFromOption(),
-                ApiToken = action.GetValue(app.GetApiTokenOption()),
-                ValidateCertificate = action.GetValue(app.GetValidateCertificateOption()),
-                HttpHost = action.GetValue(optHttpHost)!,
-                HttpPort = action.GetValue(optHttpPort),
-                HttpUrl = action.GetValue(optHttpUrl)!,
-                Prefix = action.GetValue(optPrefix)!,
-                ServiceMode = action.GetValue(optServiceMode)
-            });
+    var path = action.GetValue(optCreateOutput);
+    if (string.IsNullOrWhiteSpace(path)) { path = SettingsFileName; }
 
-            // Register the metrics background service
-            services.AddHostedService<MetricsBackgroundService>();
-        });
+    File.WriteAllText(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+    Console.Out.WriteLine($"Created: {path}");
+});
 
-    var host = hostBuilder.Build();
+var cmdRun = app.AddCommand("run", "Run exporters");
+var optRunFast = cmdRun.AddOption<bool>("--fast", "Use fast profile (ignored if --settings-file is set)");
+var optRunFull = cmdRun.AddOption<bool>("--full", "Use full profile (ignored if --settings-file is set)");
 
-    // Run in appropriate mode
-    if (action.GetValue(optServiceMode) == false)
-    {
-        // Console mode - allow manual stop with Enter key
-        await host.StartAsync();
+cmdRun.SetAction(async (action) =>
+{
+    var settingsFile = action.GetValue(optSettingsFile);
+    var settings = !string.IsNullOrWhiteSpace(settingsFile)
+                        ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile))!
+                        : action.GetValue(optRunFast)
+                            ? Settings.Fast()
+                            : action.GetValue(optRunFull)
+                                ? Settings.Full()
+                                : Settings.Standard();
 
-        Console.WriteLine("Metrics exporter is running. Press Enter to stop...");
-        Console.ReadLine();
+    var host = Host.CreateDefaultBuilder()
+                   .UseSystemd()
+                   .UseWindowsService()
+                   .ConfigureLogging(logging =>
+                   {
+                       logging.ClearProviders();
+                       logging.AddConsole();
 
-        Console.WriteLine("Stopping metrics exporter...");
-        await host.StopAsync(TimeSpan.FromSeconds(10));
-    }
-    else
-    {
-        // Service mode - run indefinitely until process is killed
-        await host.RunAsync();
-    }
+                       var logLevel = app.GetLogLevelFromDebug();
+                       logging.AddFilter("Microsoft", LogLevel.Warning);
+                       logging.AddFilter("System", LogLevel.Warning);
+                       logging.AddFilter("Corsinvest.ProxmoxVE.Api.PveClientBase", logLevel);
+                       logging.SetMinimumLevel(logLevel);
+                   })
+                    .ConfigureServices((_, services) =>
+                    {
+                        var lf = LoggerFactory.Create(b => b.AddConsole());
+
+                        services.AddSingleton(new MetricsServiceOptions
+                        {
+                            Settings = settings,
+                            ClientFactory = () => ClientHelper.GetClientAndTryLoginAsync(
+                                action.GetValue(app.GetHostOption())!,
+                                action.GetValue(app.GetUsernameOption())!,
+                                app.GetPasswordFromOption(),
+                                action.GetValue(app.GetApiTokenOption()),
+                                action.GetValue(app.GetValidateCertificateOption()),
+                                lf),
+                        });
+
+                        services.AddHostedService<MetricsBackgroundService>();
+                    })
+                    .Build();
+
+    await host.RunAsync();
 });
 
 var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());
