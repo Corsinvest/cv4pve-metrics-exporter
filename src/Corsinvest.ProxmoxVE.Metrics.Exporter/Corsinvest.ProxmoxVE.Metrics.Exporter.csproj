@@ -12,6 +12,9 @@
   <ItemGroup>
     <PackageReference Include="Corsinvest.ProxmoxVE.Api.Console" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+    <PackageReference Include="prometheus-net" />
   </ItemGroup>
 
   <ItemGroup>

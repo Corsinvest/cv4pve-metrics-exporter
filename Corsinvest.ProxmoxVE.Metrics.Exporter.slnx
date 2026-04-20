@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Corsinvest.ProxmoxVE.Metrics.Exporter.Api/Corsinvest.ProxmoxVE.Metrics.Exporter.Api.csproj" />
+    <Project Path="src/Corsinvest.ProxmoxVE.Metrics.Exporter/Corsinvest.ProxmoxVE.Metrics.Exporter.csproj" />
+  </Folder>
+</Solution>

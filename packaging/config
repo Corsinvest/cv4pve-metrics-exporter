@@ -1,0 +1,8 @@
+type=cli
+description=Metrics exporter for Proxmox VE
+long-description=Export Proxmox VE cluster metrics (nodes, VMs, storage, HA, replication, SMART) for monitoring and alerting. Prometheus-compatible.
+license=GPL-3.0-only
+winget-id=Corsinvest.cv4pve.metrics-exporter
+pkg-identifier=it.corsinvest.cv4pve-metrics-exporter
+nuget-project-path=src/Corsinvest.ProxmoxVE.Metrics.Exporter.Api/Corsinvest.ProxmoxVE.Metrics.Exporter.Api.csproj
+homebrew-formula-class=Cv4pveMetricsExporter
