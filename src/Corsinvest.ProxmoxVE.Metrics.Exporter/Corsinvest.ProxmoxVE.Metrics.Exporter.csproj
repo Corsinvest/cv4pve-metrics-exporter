@@ -4,7 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>cv4pve-metrics-exporter</AssemblyName>
     <Product>Corsinvest for Proxmox VE Metrics Exporter</Product>
-    <Description>Metrics Exporter for Proxmox VE monitoring</Description>
+    <AssemblyTitle>Corsinvest for Proxmox VE Metrics Exporter</AssemblyTitle>
+    <Description>Metrics exporter for Proxmox VE</Description>
+    <ApplicationIcon>..\..\icon.ico</ApplicationIcon>
+    <IsPackable>false</IsPackable>
     <InvariantGlobalization>true</InvariantGlobalization>
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>

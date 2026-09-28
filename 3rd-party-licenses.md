@@ -14,3 +14,8 @@ License: MIT
 
 [prometheus-net](https://github.com/prometheus-net/prometheus-net)
 License: MIT
+
+## Artwork
+
+The chart pictogram in `icon.svg` / `icon.png` comes from [Lucide](https://lucide.dev) (icon `chart-spline`)
+License: ISC

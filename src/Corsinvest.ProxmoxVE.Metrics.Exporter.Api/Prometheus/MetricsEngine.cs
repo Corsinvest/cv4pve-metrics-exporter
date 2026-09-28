@@ -10,7 +10,6 @@ using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Extensions;
 using Microsoft.Extensions.Logging;
 using Prometheus;
-using Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Prometheus;
 
 namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Prometheus;
 
@@ -104,7 +103,7 @@ public partial class MetricsEngine
         await SafeTaskExtensions.WhenAllSafe(tasks);
         TrackErrors("cluster", tasks);
 
-        _statusEntries = [.. (statusTask.ResultOrDefault() ?? [])];
+        _statusEntries = [.. statusTask.ResultOrDefault() ?? []];
         _resources = [.. (resourcesTask.ResultOrDefault() ?? []).CalculateHostUsage()];
 
         WriteStatusMetrics();
