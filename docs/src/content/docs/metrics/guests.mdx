@@ -1,0 +1,103 @@
+---
+title: Guests
+description: VMs and containers — identity, tags, locks, CPU, memory, disk, I/O counters and QEMU balloon, every metric and label.
+---
+
+Use these metrics to follow each VM and container: whether it runs, how much CPU and memory it uses,
+how much traffic it does, and whether it is locked by a backup, a snapshot or a migration that never
+finished.
+
+All but the balloon come from one call, `/cluster/resources`, which lists every guest of the cluster —
+so they cost the same on a cluster of 10 or 1000 guests. Guests the token may not audit are not in the
+list: see [Permissions](/cv4pve-metrics-exporter/permissions/).
+
+## Identity and lock
+
+Always exported.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `cv4pve_guest_info` | gauge | `id`, `vmid`, `node`, `name`, `type`, `tags`, `template` | Always `1`, one per guest |
+| `cv4pve_guest_lock` | gauge | `id`, `state` | `1` for the lock the guest holds now, `0` for the others |
+
+Labels of `cv4pve_guest_info`:
+
+| Label | Value |
+|---|---|
+| `id` | `qemu/<vmid>` or `lxc/<vmid>` |
+| `vmid` | The VM or container ID |
+| `node` | The node the guest is on now — it changes after a migration |
+| `name` | The guest name |
+| `type` | `qemu` or `lxc` |
+| `tags` | The tags of the guest, sorted and separated by `;`, e.g. `db;prod`. Empty when there are none |
+| `template` | `1` for a template, `0` otherwise |
+
+The tags are sorted so that reordering them in the web interface does not create a new series. When a
+guest is renamed, retagged or migrated, its `cv4pve_guest_info` series changes labels: the old one
+stops at the next scrape.
+
+`cv4pve_guest_lock` has nine series per guest, one per `state`: `backup`, `clone`, `create`, `migrate`,
+`rollback`, `snapshot`, `snapshot-delete`, `suspended`, `suspending`. All are `0` when the guest is not
+locked. A lock left behind by an interrupted backup or migration prevents starting, migrating or
+snapshotting the guest until someone runs `qm unlock` or `pct unlock`:
+
+```txt
+# Guests locked by a backup for more than 6 hours
+min_over_time(cv4pve_guest_lock{state="backup"}[6h]) == 1
+```
+
+## Usage
+
+Always exported.
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_guest_cpu_usage_ratio` | gauge | `id` | ratio | CPU use, from `0` to `1` of the vCPUs assigned: `0.5` on a 4-vCPU guest is two vCPUs busy |
+| `cv4pve_guest_cpu_cores` | gauge | `id` | cores | vCPUs assigned |
+| `cv4pve_guest_memory_size_bytes` | gauge | `id` | bytes | Memory configured |
+| `cv4pve_guest_memory_usage_bytes` | gauge | `id` | bytes | Memory used, as Proxmox VE reports it |
+| `cv4pve_guest_memory_host_ratio` | gauge | `id` | ratio | Memory used by the guest over the RAM of its node, from `0` to `1`. `0` for a stopped guest |
+| `cv4pve_guest_disk_size_bytes` | gauge | `id` | bytes | Size of the root disk |
+| `cv4pve_guest_disk_usage_bytes` | gauge | `id` | bytes | Used space of the root disk. Proxmox VE fills it for containers; for VMs it is normally `0` |
+| `cv4pve_guest_uptime_seconds` | gauge | `id` | seconds | Time since the guest started, `0` when stopped |
+
+A stopped guest keeps its series, with usage and uptime at `0`.
+
+## I/O
+
+Always exported.
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_guest_disk_read_bytes_total` | counter | `id` | bytes | Bytes read from the guest's disks |
+| `cv4pve_guest_disk_write_bytes_total` | counter | `id` | bytes | Bytes written to the guest's disks |
+| `cv4pve_guest_network_receive_bytes_total` | counter | `id` | bytes | Bytes received by the guest over the network |
+| `cv4pve_guest_network_transmit_bytes_total` | counter | `id` | bytes | Bytes sent by the guest over the network |
+
+Proxmox VE counts from the start of the guest: the counters go back to zero when a guest restarts or
+migrates, and `rate()` and `increase()` take that into account. Disk counters are not available for
+every storage type.
+
+```txt
+# Network traffic of each guest, in bytes per second
+rate(cv4pve_guest_network_receive_bytes_total[5m])
+  + rate(cv4pve_guest_network_transmit_bytes_total[5m])
+```
+
+## Balloon
+
+From the QEMU monitor of each running VM (`info balloon`) · setting `Guest.Balloon` (on only in full).
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_guest_balloon_actual_bytes` | gauge | `id`, `vmid` | bytes | Memory the balloon driver leaves to the VM now |
+
+With ballooning, a VM configured with a minimum memory lower than its maximum can be given back less
+than its maximum when the node needs RAM. This metric shows how much it actually has. Only running QEMU
+VMs with a balloon device have it; containers have no balloon.
+
+:::caution[One call per running VM]
+The balloon is not in `/cluster/resources`: the exporter asks each running VM, at most
+`MaxParallelRequests` at a time. On a cluster with hundreds of VMs this makes every scrape slower —
+which is why it is off in the standard profile.
+:::

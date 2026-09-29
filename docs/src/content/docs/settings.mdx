@@ -1,0 +1,149 @@
+---
+title: Settings
+description: Profiles, the settings.json file, every collector with its cache, the HTTP endpoint and how to keep scrapes fast on large clusters.
+---
+
+What the exporter reads is decided by a set of collectors, each with an on/off switch and a cache.
+Three profiles cover the common cases; a settings file lets you choose each one yourself — for example
+to add SMART to the standard profile, or to listen on every interface.
+
+## Profiles
+
+| Profile | How | For |
+|---|---|---|
+| **Fast** | `run --fast` | Large clusters or short scrape intervals: only the cluster-wide calls |
+| **Standard** | `run` | Daily monitoring: everything except SMART and balloon |
+| **Full** | `run --full` | Everything, with the slow data cached |
+
+What each profile turns on, and the cache in seconds (`0` = read on every scrape):
+
+| Setting | Fast | Standard | Full |
+|---|:-:|:-:|:-:|
+| `ApiInstrumentation` | | ✓ | ✓ |
+| `Cluster.Ha` | ✓ | ✓ | ✓ cache 30 |
+| `Cluster.BackupInfo` | ✓ | ✓ cache 600 | ✓ cache 600 |
+| `Node.Status` | | ✓ | ✓ |
+| `Node.Subscription` | | ✓ cache 3600 | ✓ cache 3600 |
+| `Node.Replication` | | ✓ | ✓ cache 60 |
+| `Node.DiskSmart` | | | ✓ cache 600 |
+| `Guest.Balloon` | | | ✓ |
+
+The endpoint (`Host`, `Port`, `Url`) and `MaxParallelRequests` are the same in every profile.
+
+The fast profile makes no per-node call at all. It keeps HA and backup coverage, which are read once
+for the whole cluster, not per node.
+
+## Your own settings file
+
+```bash
+cv4pve-metrics-exporter create-settings              # standard profile
+cv4pve-metrics-exporter create-settings --fast       # or start from fast
+cv4pve-metrics-exporter create-settings --full -o /etc/cv4pve-metrics-exporter/settings.json
+# edit the file, then:
+cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' --settings-file=settings.json run
+```
+
+- `create-settings` writes `settings.json` in the current folder, or the path given with `--output` / `-o`,
+  and overwrites an existing file. It needs no connection to the cluster.
+- `--settings-file` goes **before** `run`, and wins over `--fast` and `--full`.
+- The file is read once, at start: restart the exporter after changing it.
+- A setting left out of the file takes its standard default.
+- The file is strict JSON: no comments, no trailing commas. Setting names are **case-sensitive** — a
+  misspelled name, `port` instead of `Port`, is ignored without an error.
+
+The standard file:
+
+```json
+{
+  "Prometheus": {
+    "Enabled": true,
+    "Host": "localhost",
+    "Port": 9221,
+    "Url": "metrics/",
+    "MaxParallelRequests": 5,
+    "ApiInstrumentation": true,
+    "Cluster": {
+      "Ha": { "Enabled": true, "CacheSeconds": 0 },
+      "BackupInfo": { "Enabled": true, "CacheSeconds": 600 }
+    },
+    "Node": {
+      "Status": { "Enabled": true, "CacheSeconds": 0 },
+      "Subscription": { "Enabled": true, "CacheSeconds": 3600 },
+      "Replication": { "Enabled": true, "CacheSeconds": 0 },
+      "DiskSmart": { "Enabled": false, "CacheSeconds": 0 }
+    },
+    "Guest": {
+      "Balloon": { "Enabled": false, "CacheSeconds": 0 }
+    }
+  }
+}
+```
+
+`create-settings` writes the same content with one property per line.
+
+cv4pve-admin's [Metrics Exporter](https://corsinvest.github.io/cv4pve-admin/modules/metrics-exporter/)
+module uses the same settings, with the same three presets, in its web interface.
+
+## All settings
+
+Every setting is under `Prometheus`. Defaults are those of the standard profile.
+
+### Endpoint
+
+| Setting | Default | What it does |
+|---|---|---|
+| `Enabled` | `true` | With `false` the exporter prints `No exporter enabled in settings, exiting.` and stops |
+| `Host` | `localhost` | Host name or address to listen on; `*` for every interface — see [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address) |
+| `Port` | `9221` | TCP port |
+| `Url` | `metrics/` | Path of the endpoint, without the leading `/` and with the trailing one |
+
+### General
+
+| Setting | Default | What it does |
+|---|---|---|
+| `MaxParallelRequests` | `5` | Per-node and per-VM calls running at the same time — see [Performance](#performance) |
+| `ApiInstrumentation` | `true` | Duration and errors of each Proxmox VE endpoint — see [API instrumentation](/cv4pve-metrics-exporter/metrics/exporter/#api-instrumentation) |
+
+### Collectors
+
+Every collector has the same two settings, `Enabled` and `CacheSeconds` — see [Cache](#cache).
+
+| Collector | Default | Calls | Metrics |
+|---|---|---|---|
+| `Cluster.Ha` | on | 3 for the cluster | [HA](/cv4pve-metrics-exporter/metrics/ha/) |
+| `Cluster.BackupInfo` | on, cache 600 | 1 for the cluster | [Backup coverage](/cv4pve-metrics-exporter/metrics/replication-backup/#backup-coverage) |
+| `Node.Status` | on | 2 per node | [Node status](/cv4pve-metrics-exporter/metrics/cluster-nodes/#node-status), [Overcommit](/cv4pve-metrics-exporter/metrics/cluster-nodes/#overcommit) |
+| `Node.Subscription` | on, cache 3600 | 1 per node | [Subscription](/cv4pve-metrics-exporter/metrics/cluster-nodes/#subscription) |
+| `Node.Replication` | on | 1 per node | [Replication](/cv4pve-metrics-exporter/metrics/replication-backup/#replication) |
+| `Node.DiskSmart` | off | 1 per node | [SMART](/cv4pve-metrics-exporter/metrics/cluster-nodes/#smart) |
+| `Guest.Balloon` | off | 1 per running VM | [Balloon](/cv4pve-metrics-exporter/metrics/guests/#balloon) |
+
+`/cluster/status` and `/cluster/resources` are read on every scrape and cannot be turned off: they give
+the node list and every guest and storage metric.
+
+## Cache
+
+`CacheSeconds` is how long a collector keeps its last read before calling Proxmox VE again. `0` reads it
+on every scrape.
+
+While the cache is valid the collector is skipped and its metrics keep the values of the last read, so
+Prometheus always gets a value — only the call is saved. Per-node collectors are cached per node. A call
+that fails is not cached: it is tried again on the next scrape.
+
+Cache what changes slowly, such as the subscription, SMART and backup coverage. Do not cache what you
+alert on within minutes, such as HA states.
+
+## Performance
+
+A scrape takes the time of the two cluster-wide calls, plus the per-node collectors of the slowest
+nodes, plus the balloon calls. `cv4pve_scrape_duration_seconds` shows the total, and the
+[API instrumentation](/cv4pve-metrics-exporter/metrics/exporter/#api-instrumentation) shows which
+endpoint takes it.
+
+If scrapes get close to the `scrape_timeout` of Prometheus:
+
+- **Cache** the slow collectors, or turn off those you do not use.
+- **Use the fast profile**: no per-node calls.
+- **Raise `MaxParallelRequests`**: more per-node and balloon calls at the same time. Each one is a real
+  request served by the node you connect to, so raise it step by step and watch the API latency.
+- **Turn off the balloon** on clusters with many running VMs: it is one call per VM.

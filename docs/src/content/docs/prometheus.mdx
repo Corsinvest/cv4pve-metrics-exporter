@@ -1,0 +1,105 @@
+---
+title: Prometheus
+description: The scrape configuration, the listening address, and how every scrape reads the Proxmox VE cluster.
+---
+
+cv4pve-metrics-exporter is a Prometheus exporter: it does not push anything and keeps no history. It
+waits for Prometheus to ask, reads the cluster, and answers with the current values. Prometheus stores
+them, and from there come the graphs, the history and the alerts.
+
+## Scrape configuration
+
+In `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: proxmox
+    scrape_interval: 1m
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ['exporter-host:9221']
+        labels:
+          cluster: pve-cluster
+```
+
+- `metrics_path` can stay at the Prometheus default, `/metrics`: the exporter answers on `/metrics` and
+  `/metrics/`. Set it only if you changed `Url` in the settings.
+- `scrape_timeout` must be longer than a scrape takes. Check `cv4pve_scrape_duration_seconds` after the
+  first scrapes: it grows with the number of nodes and guests, and with the collectors turned on.
+- The `cluster` label is optional. One exporter reads one cluster, and its metrics carry no cluster
+  label of their own except `cv4pve_cluster_info`: with more clusters, run one exporter per cluster, each
+  on its own port, and tell them apart with a label on the target.
+
+## How a scrape reads the cluster
+
+The exporter has no timer of its own. Each time Prometheus requests the endpoint, the exporter:
+
+1. Connects to the first node in `--host` that answers, and authenticates with the token or the
+   user and password.
+2. Reads the cluster-wide lists in parallel: `/cluster/status` and `/cluster/resources`, plus HA and
+   backup coverage when those collectors are on. These give the cluster, node, guest and storage metrics.
+3. For every **online** node, reads the per-node collectors that are on — status and version,
+   subscription, replication, SMART disks — at most `MaxParallelRequests` calls at a time.
+4. With the balloon collector on, asks each running QEMU VM for its balloon, again at most
+   `MaxParallelRequests` at a time.
+5. Answers with all the metrics.
+
+So the **scrape interval of Prometheus is the collection interval**. Two Prometheus servers scraping the
+same exporter make it read the cluster twice.
+
+### Cache
+
+Slow-changing data does not need to be read on every scrape. Each collector has a `CacheSeconds`
+setting: while it has not expired, the collector is skipped and its metrics keep the values of the last
+read. The standard profile caches backup coverage for 10 minutes and the subscription for an hour; the
+full profile also caches HA (30 s), replication (1 min) and SMART (10 min). A call that fails is not
+cached: it is tried again on the next scrape. See [Settings](/cv4pve-metrics-exporter/settings/#cache).
+
+### When something fails
+
+If no node answers or the login fails, the scrape answers HTTP 503 and Prometheus sets `up` to `0`. If
+a single call fails, the scrape answers normally with the other metrics and counts the error — see
+[Troubleshooting](/cv4pve-metrics-exporter/troubleshooting/#when-proxmox-ve-does-not-answer).
+
+### Objects that disappear
+
+A guest that is deleted, a storage that is removed, a job that now covers a guest: after the next read
+of their collector, their series are no longer exported. Prometheus marks them stale at that scrape, and
+queries stop returning them.
+
+## Listening address
+
+The endpoint is set in the settings file (see [Settings](/cv4pve-metrics-exporter/settings/#endpoint)):
+
+| Setting | Default | |
+|---|---|---|
+| `Host` | `localhost` | Name or address to listen on |
+| `Port` | `9221` | TCP port |
+| `Url` | `metrics/` | Path |
+
+`Host` decides both where the exporter listens and which host name a request must use:
+
+| `Host` | Reachable from | Notes |
+|---|---|---|
+| `localhost` | the same machine, as `http://localhost:9221/metrics/` | A request to `127.0.0.1` is refused. Enough when Prometheus runs on the same machine |
+| `*` | every interface, with any host name | For a Prometheus server on another machine. On Windows it needs administrator rights |
+| an IP address or host name | that address only, with that name | On Windows it needs administrator rights |
+| `0.0.0.0` | — | Not accepted: the exporter stops with `The request is not supported`. Use `*` |
+
+On Windows, anything but `localhost` fails with `Access is denied` for a normal user. A Windows service
+running as `LocalSystem` has the rights it needs.
+
+:::caution[Plain HTTP, no authentication]
+The endpoint has no TLS and no login. The metrics show node names and addresses, guest names and tags,
+storage names and disk serial numbers. Keep it on `localhost`, or let only the Prometheus server reach
+the port with a firewall rule.
+:::
+
+## Checking the endpoint
+
+```bash
+curl -s http://localhost:9221/metrics/ | grep -v '^#' | head
+```
+
+In Prometheus, *Status → Targets* shows the job `proxmox` with state `UP` once the first scrape has
+succeeded. The metrics are listed in [Metrics](/cv4pve-metrics-exporter/metrics/).

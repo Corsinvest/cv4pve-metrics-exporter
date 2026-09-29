@@ -1,0 +1,113 @@
+---
+title: cv4pve-metrics-exporter
+description: Prometheus exporter for Proxmox VE — nodes, VMs, containers, storage, HA, replication, backup coverage, subscription and SMART, read from outside the cluster through the API only.
+template: splash
+hero:
+  title: Every <span class="accent-mark">Proxmox VE</span> metric in Prometheus
+  tagline: Runs outside the nodes, API only. One endpoint for the whole cluster — nodes, VMs, containers and storage, plus what the built-in metrics leave out — HA, replication, guests without a backup, locks, subscription and SMART — ready for history, graphs and alerts.
+  actions:
+    - text: Get started
+      link: /cv4pve-metrics-exporter/getting-started/
+      icon: right-arrow
+    - text: Alert rules
+      link: /cv4pve-metrics-exporter/alerting/
+      icon: right-arrow
+      variant: secondary
+    - text: All metrics
+      link: /cv4pve-metrics-exporter/metrics/
+      variant: minimal
+---
+
+import FeatureGrid from '@corsinvest/cv4pve-docs-theme/components/FeatureGrid.astro';
+import CtaBand from '@corsinvest/cv4pve-docs-theme/components/CtaBand.astro';
+import proxmoxLogo from '../../assets/proxmox-logo.svg';
+
+export const features = [
+  { title: "The whole cluster in one scrape", text: "Cluster, nodes, VMs, containers and storages from two cluster-wide API calls: the number of calls does not grow with the number of guests.", href: 'prometheus/#how-a-scrape-reads-the-cluster' },
+  { title: "What the built-in metrics miss", text: "HA state of resources and nodes, replication, guests no backup job includes, guest locks, subscription expiry, SMART health and SSD wearout.", href: 'metrics/' },
+  { title: "Overcommit at a glance", text: "vCPUs and memory assigned to the running guests of each node, next to what the node has.", href: 'metrics/cluster-nodes/#overcommit' },
+  { title: "Alert rules included", text: "Node down, quorum lost, storage almost full, guest without backup, replication failing, HA in error, SMART failed — tested rules to copy.", href: 'alerting/' },
+  { title: "Light on the cluster", text: "Three profiles, a cache per collector for slow data such as SMART and subscription, and a limit on parallel calls.", href: 'settings/' },
+  { title: "Runs as a service", text: "systemd with Type=notify on Linux, a native Windows service — no wrapper, no agent on the nodes.", href: 'service/' },
+];
+
+```bash
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=…' run --full
+curl -s http://localhost:9221/metrics/ | grep -v '^#'
+```
+
+A few lines of the answer, from a two-node cluster:
+
+```text
+cv4pve_up{id="node/pve01",type="node"} 1
+cv4pve_cluster_quorate{name="pve-cluster"} 1
+cv4pve_node_info{id="node/pve01",name="pve01",ip="10.0.0.11",level="Community"} 1
+cv4pve_node_version_info{node="pve01",version="8.4.21",release="8.4",repoid="2606ac850d46da29"} 1
+cv4pve_node_memory_total_bytes{node="pve01"} 270057619456
+cv4pve_node_memory_assigned_bytes{node="pve01"} 76235669504
+cv4pve_guest_info{id="qemu/1006",vmid="1006",node="pve01",name="dc01",type="qemu",tags="domain-controller;prod",template="0"} 1
+cv4pve_guest_cpu_usage_ratio{id="qemu/1006"} 0.0308618328609814
+cv4pve_guest_memory_usage_bytes{id="qemu/1006"} 5608828928
+cv4pve_guest_lock{id="qemu/1006",state="backup"} 0
+cv4pve_storage_size_bytes{id="storage/pve01/datapool"} 5442126217216
+cv4pve_storage_usage_bytes{id="storage/pve01/datapool"} 1092213195072
+cv4pve_replication_last_sync_timestamp_seconds{id="1006-0",type="local",source="pve01",target="pve02",guest="1006"} 1790683214
+cv4pve_guests_not_backed_up 6
+cv4pve_not_backed_up_info{id="qemu/203"} 1
+cv4pve_ha_quorate 1
+cv4pve_node_disk_health{node="pve01",serial="S3Z9NX0M412345",type="ssd",dev_path="/dev/sde"} 1
+cv4pve_node_disk_wearout{node="pve01",serial="S3Z9NX0M412345",type="ssd",dev_path="/dev/sde"} 98
+cv4pve_node_subscription_next_due_timestamp_seconds{node="pve01"} 1807747200
+cv4pve_scrape_duration_seconds 0.2013666
+```
+
+Every metric, label and unit is in [Metrics](/cv4pve-metrics-exporter/metrics/).
+
+## Why
+
+Proxmox VE shows the state of the cluster in its web interface and can send node, guest and storage
+usage to an external metric server. What it does not give you is the rest of what keeps a cluster
+healthy: whether the HA manager has quorum and every resource is `started`, whether replication still
+syncs, which VMs no backup job includes, which guest has been locked since last night's backup, when the
+subscription expires, which SSD is wearing out.
+
+cv4pve-metrics-exporter reads all of it through the API and publishes it in the Prometheus format.
+Prometheus keeps the history — how a storage fills up, how memory is assigned over the months — and
+turns the metrics into alerts that reach you before a user does.
+
+## Outside the nodes, API only
+
+The exporter runs outside the cluster — on the Prometheus server, a management VM or any machine that
+reaches a node on port 8006 — and talks only to the Proxmox VE REST API. Nothing is installed on the
+nodes and no SSH is needed: a read-only API token with the `PVEAuditor` role is enough — see
+[Permissions](/cv4pve-metrics-exporter/permissions/). Any node gives the view of the whole cluster; give
+it more than one and each scrape uses the first one that answers, so the metrics keep coming while a
+node is down.
+
+## Where it fits
+
+The cv4pve suite follows the Unix philosophy: each tool does one thing and does it well.
+cv4pve-metrics-exporter watches the cluster over time; [cv4pve-report](https://corsinvest.github.io/cv4pve-report/)
+takes a full inventory of it, and [cv4pve-diag](https://corsinvest.github.io/cv4pve-diag/) finds what is
+configured wrong.
+
+| | **cv4pve-metrics-exporter** | [cv4pve-report](https://corsinvest.github.io/cv4pve-report/) | [cv4pve-diag](https://corsinvest.github.io/cv4pve-diag/) |
+|---|---|---|---|
+| **Question** | How is it doing, now and over time? | What do I have? | What is wrong? |
+| **Runs** | Permanently, scraped by Prometheus | On demand or scheduled | On demand or scheduled |
+| **Result** | Time series and alerts | Excel, HTML or JSON inventory | A list of problems with severity |
+| **Access** | Proxmox VE API only, from outside the nodes | Proxmox VE API only, from outside the nodes | Proxmox VE API only, from outside the nodes |
+
+Want the endpoint without running a separate service? [cv4pve-admin](https://github.com/Corsinvest/cv4pve-admin)
+runs the same engine in its [Metrics Exporter](https://corsinvest.github.io/cv4pve-admin/modules/metrics-exporter/)
+module, with a scrape endpoint per cluster.
+
+## What it does for you
+
+<FeatureGrid items={features} />
+
+<CtaBand
+  title="See your cluster in Prometheus"
+  text="Download the binary, point it at any node, add one scrape job."
+  proxmoxLogo={proxmoxLogo}
+/>

@@ -1,0 +1,58 @@
+---
+title: Troubleshooting
+description: What happens when Proxmox VE or a single call fails, the common startup errors, and how to see what cv4pve-metrics-exporter is doing.
+---
+
+import CliTroubleshooting from '@corsinvest/cv4pve-docs-theme/components/CliTroubleshooting.astro';
+
+## When Proxmox VE does not answer
+
+Every scrape connects to Proxmox VE again, so the exporter keeps running while the cluster is down and
+recovers by itself when it is back.
+
+- **No node reachable, or the login fails**: the scrape answers **HTTP 503**. Prometheus sets `up` to
+  `0` for the target, so the standard "target down" alert fires — see [Alerting](/cv4pve-metrics-exporter/alerting/).
+- **A single call fails** — a node offline, a missing privilege, a timeout: the scrape still answers
+  `200`. The metrics of that call keep the values of the last successful read, the other metrics are
+  current. The failure is counted in `cv4pve_scrape_errors_total{section}`, and
+  `cv4pve_scrape_last_success_timestamp_seconds` does not advance — see
+  [Exporter metrics](/cv4pve-metrics-exporter/metrics/exporter/).
+
+With `ApiInstrumentation` on, `cv4pve_api_request_errors_total{method,endpoint}` tells which call failed.
+Run with `--debug` to see the error Proxmox VE returned.
+
+:::caution[An empty result is not always an error]
+Proxmox VE does not answer with an error when a token may see only part of the cluster: it leaves out
+what the token cannot see. A guest without `VM.Audit` simply has no metrics, and no error is counted.
+See [Permissions](/cv4pve-metrics-exporter/permissions/#how-missing-privileges-show-up).
+:::
+
+## Startup errors
+
+| Symptom | Cause |
+|---|---|
+| `Unrecognized command or argument '--settings-file=…'` | `--settings-file` was written after `run`: it goes before the command. |
+| `ERROR: Could not find file '…'` | The file given to `--settings-file` does not exist. With systemd, use an absolute path. |
+| `HttpListenerException` … `Access is denied` (Windows) | Listening on anything but `localhost` needs administrator rights on Windows — see [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address). |
+| `HttpListenerException` … `The request is not supported` | `Host` is `0.0.0.0`, which the listener does not accept: use `*` to listen on all interfaces. |
+| `No exporter enabled in settings, exiting.` | `Prometheus.Enabled` is `false` in the settings file. |
+
+If the HTTP listener cannot start the exporter exits with an error code, so a service manager that
+restarts on failure retries it.
+
+## The endpoint answers with an error
+
+| Answer | Cause |
+|---|---|
+| `400` or `404` | The request used a host name other than `Host` in the settings — e.g. `127.0.0.1` while `Host` is `localhost`. Use the same name, or `*`. |
+| `404` | The path is not `Url` (default `metrics/`). `/metrics` without the trailing slash works too. |
+| `503` | The exporter could not connect or log in to Proxmox VE — see above. |
+| Connection refused | The exporter is not running, listens on another port, or only on `localhost`. |
+
+## Debug output
+
+<CliTroubleshooting />
+
+`--debug` also shows which calls are slow: every call is logged with its duration. For a permanent view,
+use the `cv4pve_api_request_duration_seconds` histogram — see
+[Exporter metrics](/cv4pve-metrics-exporter/metrics/exporter/#api-instrumentation).
