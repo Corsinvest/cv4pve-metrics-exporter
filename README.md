@@ -92,7 +92,7 @@ Then add the exporter to `prometheus.yml` — see [Prometheus](https://corsinves
 |---|---|
 | [Getting started](https://corsinvest.github.io/cv4pve-metrics-exporter/getting-started/) | Install, connect, run, first scrape |
 | [Permissions](https://corsinvest.github.io/cv4pve-metrics-exporter/permissions/) | Creating the user and API token, privileges of each call |
-| [Connection](https://corsinvest.github.io/cv4pve-metrics-exporter/connection/) | Connection options, response files for the service |
+| [Connection](https://corsinvest.github.io/cv4pve-metrics-exporter/connection/) | Connection options, options in a file for the service |
 | [Prometheus](https://corsinvest.github.io/cv4pve-metrics-exporter/prometheus/) | Scrape configuration, listening address, how a scrape reads the cluster |
 | [Run as a service](https://corsinvest.github.io/cv4pve-metrics-exporter/service/) | systemd on Linux, Windows service |
 | [Alerting](https://corsinvest.github.io/cv4pve-metrics-exporter/alerting/) | Ready-to-use Prometheus alert rules |
