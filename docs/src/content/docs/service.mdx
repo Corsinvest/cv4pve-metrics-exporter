@@ -10,7 +10,7 @@ again after a reboot. The binary integrates with both service managers by itself
 when it is ready (`Type=notify`) and runs as a native Windows service, with no wrapper such as NSSM.
 
 Keep the connection options out of the command line: put them in a
-[parameter file](/cv4pve-metrics-exporter/connection/#response-files) readable only by the
+[options file](/cv4pve-metrics-exporter/connection/#options-in-a-file) readable only by the
 service, so the token does not appear in the process list or in the unit.
 
 ## Linux (systemd)

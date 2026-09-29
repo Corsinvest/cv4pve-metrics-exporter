@@ -1,6 +1,6 @@
 ---
 title: Connection
-description: How cv4pve-metrics-exporter connects to a Proxmox VE cluster, and how to keep the options in a response file for the service.
+description: How cv4pve-metrics-exporter connects to a Proxmox VE cluster, and how to keep the options in a file for the service.
 ---
 
 import CliConnection from '@corsinvest/cv4pve-docs-theme/components/CliConnection.astro';
@@ -13,7 +13,7 @@ API token first — see [Permissions](/cv4pve-metrics-exporter/permissions/).
 
 <CliConnection user="metrics@pve" />
 
-## Response files
+## Options in a file
 
 The exporter runs as a service and starts with the same connection every time: keep it in a file, as
 [Run as a service](/cv4pve-metrics-exporter/service/) does.
