@@ -66,45 +66,59 @@ public partial class MetricsEngine
 
     private void WriteResourceMetrics()
     {
+        var series = new Series();
+
         foreach (var item in _resources.Where(r => !string.IsNullOrEmpty(r.Id)))
         {
             switch (item.ResourceType)
             {
                 case ClusterResourceType.Vm:
-                    _guestInfo.WithLabels(item.Id,
-                                          item.VmId.ToString(),
-                                          item.Node ?? "",
-                                          item.Name ?? "",
-                                          item.VmType.ToString().ToLowerInvariant(),
-                                          SortedCsv(item.Tags, ';'),
-                                          ToBit(item.IsTemplate).ToString())
-                              .Set(1);
+                    series.Set(_guestInfo,
+                               1,
+                               item.Id,
+                               item.VmId.ToString(),
+                               item.Node ?? "",
+                               item.Name ?? "",
+                               item.VmType.ToString().ToLowerInvariant(),
+                               SortedCsv(item.Tags, ';'),
+                               ToBit(item.IsTemplate).ToString());
 
-                    WriteGuestLock(item);
+                    WriteGuestLock(series, item);
 
-                    _guestCpuUsage.WithLabels(item.Id).Set(item.CpuUsagePercentage);
-                    _guestCpuCores.WithLabels(item.Id).Set(item.CpuSize);
-                    _guestMemorySize.WithLabels(item.Id).Set(item.MemorySize);
-                    _guestMemoryUsage.WithLabels(item.Id).Set(item.MemoryUsage);
-                    _guestMemoryHostRatio.WithLabels(item.Id).Set(item.HostMemoryUsage);
-                    _guestDiskSize.WithLabels(item.Id).Set(item.DiskSize);
-                    _guestDiskUsage.WithLabels(item.Id).Set(item.DiskUsage);
-                    _guestUptime.WithLabels(item.Id).Set(item.Uptime);
+                    series.Set(_guestCpuUsage, item.CpuUsagePercentage, item.Id);
+                    series.Set(_guestCpuCores, item.CpuSize, item.Id);
+                    series.Set(_guestMemorySize, item.MemorySize, item.Id);
+                    series.Set(_guestMemoryUsage, item.MemoryUsage, item.Id);
+                    series.Set(_guestMemoryHostRatio, item.HostMemoryUsage, item.Id);
+                    series.Set(_guestDiskSize, item.DiskSize, item.Id);
+                    series.Set(_guestDiskUsage, item.DiskUsage, item.Id);
+                    series.Set(_guestUptime, item.Uptime, item.Id);
 
-                    SetCounter(_guestDiskRead, item.Id, item.DiskRead);
-                    SetCounter(_guestDiskWrite, item.Id, item.DiskWrite);
-                    SetCounter(_guestNetIn, item.Id, item.NetIn);
-                    SetCounter(_guestNetOut, item.Id, item.NetOut);
+                    series.SetCounter(_guestDiskRead, item.DiskRead, item.Id);
+                    series.SetCounter(_guestDiskWrite, item.DiskWrite, item.Id);
+                    series.SetCounter(_guestNetIn, item.NetIn, item.Id);
+                    series.SetCounter(_guestNetOut, item.NetOut, item.Id);
                     break;
 
                 case ClusterResourceType.Storage:
-                    _storageInfo.WithLabels(item.Id, item.Node ?? "", item.Storage ?? "", SortedCsv(item.Content, ',')).Set(1);
-                    _storageShared.WithLabels(item.Id).Set(ToBit(item.Shared));
-                    _storageSize.WithLabels(item.Id).Set(item.DiskSize);
-                    _storageUsage.WithLabels(item.Id).Set(item.DiskUsage);
+                    series.Set(_storageInfo, 1, item.Id, item.Node ?? "", item.Storage ?? "", SortedCsv(item.Content, ','));
+                    series.Set(_storageShared, ToBit(item.Shared), item.Id);
+                    series.Set(_storageSize, item.DiskSize, item.Id);
+                    series.Set(_storageUsage, item.DiskUsage, item.Id);
                     break;
             }
         }
+
+        foreach (var gauge in new[] { _guestInfo, _guestLock, _guestCpuUsage, _guestCpuCores, _guestMemorySize, _guestMemoryUsage,
+                                      _guestMemoryHostRatio, _guestDiskSize, _guestDiskUsage, _guestUptime,
+                                      _storageInfo, _storageShared, _storageSize, _storageUsage })
+        {
+            series.Prune(gauge);
+        }
+
+        foreach (var counter in new[] { _guestDiskRead, _guestDiskWrite, _guestNetIn, _guestNetOut }) { series.Prune(counter); }
+
+        WriteResourceStatusMetrics(series);
     }
 
     private static string SortedCsv(string? csv, char separator)
@@ -113,11 +127,5 @@ public partial class MetricsEngine
         var parts = csv.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         Array.Sort(parts, StringComparer.Ordinal);
         return string.Join(separator, parts);
-    }
-
-    private static void SetCounter(Counter counter, string id, double value)
-    {
-        var current = counter.WithLabels(id).Value;
-        if (value > current) { counter.WithLabels(id).Inc(value - current); }
     }
 }

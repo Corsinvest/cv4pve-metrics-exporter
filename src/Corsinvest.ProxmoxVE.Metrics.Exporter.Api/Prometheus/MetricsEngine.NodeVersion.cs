@@ -19,9 +19,9 @@ public partial class MetricsEngine
                                              new GaugeConfiguration { LabelNames = ["node", "version", "release", "repoid"] });
 
     private void WriteNodeVersionMetrics(ClusterStatus node, NodeVersion version)
-        => _nodeVersionInfo.WithLabels(node.Name,
-                                       version.Version ?? "",
-                                       version.Release ?? "",
-                                       version.RepositoryId ?? "")
-                           .Set(1);
+    {
+        var series = new Series();
+        series.Set(_nodeVersionInfo, 1, node.Name, version.Version ?? "", version.Release ?? "", version.RepositoryId ?? "");
+        series.Prune(_nodeVersionInfo, labels => labels[0] == node.Name);
+    }
 }

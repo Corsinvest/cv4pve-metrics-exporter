@@ -35,10 +35,14 @@ public class Settings
     /// <summary>Guest (VM/CT) collection toggles.</summary>
     public GuestSettings Guest { get; set; } = new();
 
-    /// <summary>Minimum API calls — only cluster-wide bulk data.</summary>
+    /// <summary>Minimum API calls — only cluster-wide bulk data, nothing cached.</summary>
     public static Settings Fast() => new()
     {
         ApiInstrumentation = false,
+        Cluster = new()
+        {
+            BackupInfo = new() { Enabled = true, CacheSeconds = 0 },
+        },
         Node = new()
         {
             Status = new() { Enabled = false },
@@ -48,18 +52,11 @@ public class Settings
         },
     };
 
-    /// <summary>Default — everything cheap is on, slow-changing data is cached, expensive opt-ins are off.</summary>
-    public static Settings Standard() => new()
-    {
-        Cluster = new()
-        {
-            BackupInfo = new() { Enabled = true, CacheSeconds = 600 },
-        },
-        Node = new()
-        {
-            Subscription = new() { Enabled = true, CacheSeconds = 3600 },
-        },
-    };
+    /// <summary>
+    /// Default — everything cheap is on, slow-changing data is cached, expensive opt-ins are off.
+    /// These are the property defaults, so a setting left out of a settings file takes its standard value.
+    /// </summary>
+    public static Settings Standard() => new();
 
     /// <summary>Everything enabled, with cache TTL tuned per data freshness needs.</summary>
     public static Settings Full() => new()

@@ -14,6 +14,10 @@ using Prometheus;
 namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Prometheus;
 
 /// <summary>Collects Proxmox VE metrics and writes them into a Prometheus registry.</summary>
+/// <remarks>
+/// A collection that fails keeps the values of the last successful read; a successful read replaces them,
+/// removing the series of objects that no longer exist. Not thread-safe: run one collection at a time.
+/// </remarks>
 public partial class MetricsEngine
 {
     private readonly Settings _settings;
@@ -23,6 +27,7 @@ public partial class MetricsEngine
 
     private IReadOnlyList<ClusterStatus> _statusEntries = [];
     private IReadOnlyList<ClusterResource> _resources = [];
+    private int _failedCalls;
 
     /// <summary>Creates the engine and initializes all metric definitions in the given registry.</summary>
     public MetricsEngine(Settings settings,
@@ -53,22 +58,31 @@ public partial class MetricsEngine
 
     private static double ToBit(bool v) => v ? 1 : 0;
 
+    /// <summary>True if the collector is on and its cache, if any, has expired.</summary>
     private bool ShouldCollect(string key, CollectorSettings cs)
     {
         if (!cs.Enabled) { return false; }
         if (cs.CacheSeconds <= 0) { return true; }
 
-        var last = _lastCollect.GetValueOrDefault(key, DateTime.MinValue);
-        if (DateTime.UtcNow - last < TimeSpan.FromSeconds(cs.CacheSeconds)) { return false; }
+        lock (_lastCollect)
+        {
+            var last = _lastCollect.GetValueOrDefault(key, DateTime.MinValue);
+            return DateTime.UtcNow - last >= TimeSpan.FromSeconds(cs.CacheSeconds);
+        }
+    }
 
-        _lastCollect[key] = DateTime.UtcNow;
-        return true;
+    /// <summary>Starts the cache of a collector. Called only after a successful read, so a failed one is retried.</summary>
+    private void MarkCollected(string key, CollectorSettings cs)
+    {
+        if (cs.CacheSeconds <= 0) { return; }
+        lock (_lastCollect) { _lastCollect[key] = DateTime.UtcNow; }
     }
 
     /// <summary>Runs a full scrape: bulk cluster-wide fetch + per-node parallel + optional per-guest.</summary>
     public async Task CollectAsync(PveClient client)
     {
         var sw = Stopwatch.StartNew();
+        _failedCalls = 0;
         if (_settings.ApiInstrumentation) { client.RequestCompleted += OnApiRequestCompleted; }
 
         try
@@ -77,7 +91,7 @@ public partial class MetricsEngine
             await CollectPerNodeAsync(client);
             if (ShouldCollect("guest:balloon", _settings.Guest.Balloon)) { await CollectBalloonAsync(client); }
 
-            _lastSuccessTimestamp.SetToCurrentTimeUtc();
+            if (_failedCalls == 0) { _lastSuccessTimestamp.SetToCurrentTimeUtc(); }
         }
         finally
         {
@@ -94,43 +108,69 @@ public partial class MetricsEngine
         var backupEnabled = ShouldCollect("cluster:backup_info", _settings.Cluster.BackupInfo);
 
         var haTask = haEnabled ? client.Cluster.Ha.Resources.GetAsync() : null;
-        var haStatusTask = haEnabled ? client.Cluster.Ha.Status.Current.GetAsync() : null;
-        var backupTask = backupEnabled ? client.Cluster.BackupInfo.NotBackedUp.GetGuestsNotInBackup() : null;
+        var haManagerTask = haEnabled ? Checked(client.Cluster.Ha.Status.ManagerStatus.ManagerStatus()) : null;
+        var backupTask = backupEnabled ? Checked(client.Cluster.BackupInfo.NotBackedUp.GetGuestsNotInBackup()) : null;
 
-        var tasks = new Task?[] { statusTask, resourcesTask, haTask, haStatusTask, backupTask }
+        var tasks = new Task?[] { statusTask, resourcesTask, haTask, haManagerTask, backupTask }
                         .Where(t => t is not null).Cast<Task>().ToArray();
 
         await SafeTaskExtensions.WhenAllSafe(tasks);
         TrackErrors("cluster", tasks);
 
-        _statusEntries = [.. statusTask.ResultOrDefault() ?? []];
-        _resources = [.. (resourcesTask.ResultOrDefault() ?? []).CalculateHostUsage()];
+        // A failed list keeps the previous one: the per-node calls still go to the nodes last seen online.
+        if (statusTask.IsCompletedSuccessfully)
+        {
+            _statusEntries = [.. statusTask.Result];
+            WriteStatusMetrics();
+            WriteClusterMetrics();
+        }
 
-        WriteStatusMetrics();
-        WriteClusterMetrics();
-        WriteResourceMetrics();
-        if (_settings.Node.Status.Enabled) { WriteNodeAssignmentMetrics(); }
-        if (haTask?.ResultOrDefault() is { } ha) { WriteHaMetrics(ha); }
-        if (haStatusTask?.ResultOrDefault() is { } haStatus) { WriteHaStatusMetrics(haStatus); }
-        if (backupTask?.ResultOrDefault() is { } backup) { WriteBackupMetrics(backup); }
+        if (resourcesTask.IsCompletedSuccessfully)
+        {
+            _resources = [.. resourcesTask.Result.CalculateHostUsage()];
+            WriteResourceMetrics();
+            if (_settings.Node.Status.Enabled) { WriteNodeAssignmentMetrics(); }
+        }
+
+        if (haTask?.IsCompletedSuccessfully == true && haManagerTask?.IsCompletedSuccessfully == true)
+        {
+            WriteHaMetrics(haTask.Result, haManagerTask.Result);
+            MarkCollected("cluster:ha", _settings.Cluster.Ha);
+        }
+
+        if (backupTask?.IsCompletedSuccessfully == true)
+        {
+            WriteBackupMetrics(backupTask.Result);
+            MarkCollected("cluster:backup_info", _settings.Cluster.BackupInfo);
+        }
     }
 
-    private Task CollectPerNodeAsync(PveClient client)
-        => RunParallelAsync(_statusEntries.Where(s => s.Type == "node" && s.IsOnline && !string.IsNullOrEmpty(s.Name)),
-                            node => CollectNodeAsync(client, node));
+    private IEnumerable<ClusterStatus> OnlineNodes
+        => _statusEntries.Where(s => s.Type == "node" && s.IsOnline && !string.IsNullOrEmpty(s.Name));
+
+    private async Task CollectPerNodeAsync(PveClient client)
+    {
+        var online = OnlineNodes.ToArray();
+        await RunParallelAsync(online, node => CollectNodeAsync(client, node));
+
+        // Nodes that are offline or gone: their per-node series are no longer current.
+        var names = online.Select(a => a.Name).ToHashSet(StringComparer.Ordinal);
+        RemoveNodeSeries(labels => !names.Contains(labels[0]));
+    }
 
     private async Task CollectNodeAsync(PveClient client, ClusterStatus node)
     {
-        var statusEnabled = ShouldCollect($"node:status:{node.Name}", _settings.Node.Status);
-        var subEnabled = ShouldCollect($"node:subscription:{node.Name}", _settings.Node.Subscription);
-        var smartEnabled = ShouldCollect($"node:disk_smart:{node.Name}", _settings.Node.DiskSmart);
-        var replEnabled = ShouldCollect($"node:replication:{node.Name}", _settings.Node.Replication);
+        var name = node.Name;
+        var statusEnabled = ShouldCollect($"node:status:{name}", _settings.Node.Status);
+        var subEnabled = ShouldCollect($"node:subscription:{name}", _settings.Node.Subscription);
+        var smartEnabled = ShouldCollect($"node:disk_smart:{name}", _settings.Node.DiskSmart);
+        var replEnabled = ShouldCollect($"node:replication:{name}", _settings.Node.Replication);
 
-        var statusTask = statusEnabled ? client.Nodes[node.Name].Status.GetAsync() : null;
-        var subTask = subEnabled ? client.Nodes[node.Name].Subscription.GetAsync() : null;
-        var versionTask = statusEnabled ? client.Nodes[node.Name].Version.GetAsync() : null;
-        var disksTask = smartEnabled ? client.Nodes[node.Name].Disks.List.GetAsync() : null;
-        var replTask = replEnabled ? client.Nodes[node.Name].Replication.GetAsync() : null;
+        var statusTask = statusEnabled ? client.Nodes[name].Status.GetAsync() : null;
+        var subTask = subEnabled ? client.Nodes[name].Subscription.GetAsync() : null;
+        var versionTask = statusEnabled ? client.Nodes[name].Version.GetAsync() : null;
+        var disksTask = smartEnabled ? client.Nodes[name].Disks.List.GetAsync() : null;
+        var replTask = replEnabled ? client.Nodes[name].Replication.GetAsync() : null;
 
         var tasks = new Task?[] { statusTask, subTask, versionTask, disksTask, replTask }
                         .Where(t => t is not null).Cast<Task>().ToArray();
@@ -139,16 +179,45 @@ public partial class MetricsEngine
         await SafeTaskExtensions.WhenAllSafe(tasks);
         TrackErrors("node", tasks);
 
-        if (statusTask?.ResultOrDefault() is { } st) { WriteNodeStatusMetrics(node, st); }
-        if (subTask?.ResultOrDefault() is { } sb) { WriteNodeSubscriptionMetrics(node, sb); }
-        if (versionTask?.ResultOrDefault() is { } vr) { WriteNodeVersionMetrics(node, vr); }
-        if (disksTask?.ResultOrDefault() is { } dk) { WriteNodeDiskMetrics(node, dk); }
-        if (replTask?.ResultOrDefault() is { } rp) { WriteReplicationMetrics(rp); }
+        if (statusTask?.IsCompletedSuccessfully == true) { WriteNodeStatusMetrics(node, statusTask.Result); }
+        if (versionTask?.IsCompletedSuccessfully == true) { WriteNodeVersionMetrics(node, versionTask.Result); }
+        if (statusTask?.IsCompletedSuccessfully == true && versionTask?.IsCompletedSuccessfully == true)
+        {
+            MarkCollected($"node:status:{name}", _settings.Node.Status);
+        }
+
+        if (subTask?.IsCompletedSuccessfully == true)
+        {
+            WriteNodeSubscriptionMetrics(node, subTask.Result);
+            MarkCollected($"node:subscription:{name}", _settings.Node.Subscription);
+        }
+
+        if (disksTask?.IsCompletedSuccessfully == true)
+        {
+            WriteNodeDiskMetrics(node, disksTask.Result);
+            MarkCollected($"node:disk_smart:{name}", _settings.Node.DiskSmart);
+        }
+
+        if (replTask?.IsCompletedSuccessfully == true)
+        {
+            WriteReplicationMetrics(node, replTask.Result);
+            MarkCollected($"node:replication:{name}", _settings.Node.Replication);
+        }
+    }
+
+    /// <summary>Removes the series of the per-node collectors whose node matches <paramref name="predicate"/>.</summary>
+    private void RemoveNodeSeries(Func<string[], bool> predicate)
+    {
+        RemoveNodeStatusSeries(predicate);
+        RemoveWhere(_nodeVersionInfo, predicate);
+        RemoveNodeSubscriptionSeries(predicate);
+        RemoveNodeDiskSeries(predicate);
+        RemoveReplicationSeries(predicate);
     }
 
     private async Task RunParallelAsync<T>(IEnumerable<T> source, Func<T, Task> func)
     {
-        var semaphore = new SemaphoreSlim(_settings.MaxParallelRequests);
+        using var semaphore = new SemaphoreSlim(_settings.MaxParallelRequests);
         await Task.WhenAll(source.Select(async item =>
         {
             await semaphore.WaitAsync();

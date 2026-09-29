@@ -11,6 +11,6 @@ public class ClusterSettings
     /// <summary>HA resources and status.</summary>
     public CollectorSettings Ha { get; set; } = new();
 
-    /// <summary>Guests not covered by any backup job.</summary>
-    public CollectorSettings BackupInfo { get; set; } = new();
+    /// <summary>Guests not covered by any backup job. Cached 10 minutes by default: it changes only when jobs or guests do.</summary>
+    public CollectorSettings BackupInfo { get; set; } = new() { CacheSeconds = 600 };
 }

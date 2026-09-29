@@ -12,4 +12,7 @@ internal sealed class MetricsServiceOptions
 {
     public Func<Task<PveClient>> ClientFactory { get; set; } = null!;
     public Settings Settings { get; set; } = new();
+
+    /// <summary>Exit code of the process: 1 when the exporter could not start.</summary>
+    public int ExitCode { get; set; }
 }

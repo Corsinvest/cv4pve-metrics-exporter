@@ -37,7 +37,7 @@ Each Proxmox VE call the exporter makes, with the privilege the API requires for
 |---|---|---|---|
 | `GET /cluster/status` | `Sys.Audit` on `/` | Cluster and node metrics, and the list of nodes for every per-node call | No cluster or node metrics, no per-node calls |
 | `GET /cluster/resources` | any user; the list is filtered | Guests and storages | Guests without `VM.Audit` and storages without `Datastore.Audit` are simply missing |
-| `GET /cluster/ha/resources`, `/cluster/ha/status/current`, `/cluster/ha/status/manager_status` | `Sys.Audit` on `/` | [HA](/cv4pve-metrics-exporter/metrics/ha/) | Error, no HA metrics |
+| `GET /cluster/ha/resources`, `/cluster/ha/status/manager_status` | `Sys.Audit` on `/` | [HA](/cv4pve-metrics-exporter/metrics/ha/) | Error, no HA metrics |
 | `GET /cluster/backup-info/not-backed-up` | `Sys.Audit` on `/` | [Backup coverage](/cv4pve-metrics-exporter/metrics/replication-backup/#backup-coverage) | Error, no backup metrics |
 | `GET /nodes/{node}/status` | `Sys.Audit` on `/nodes/{node}` | [Node status](/cv4pve-metrics-exporter/metrics/cluster-nodes/#node-status) | Error for each node |
 | `GET /nodes/{node}/version` | any user | Node version | — |

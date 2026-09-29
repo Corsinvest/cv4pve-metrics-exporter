@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Corsinvest.ProxmoxVE.Metrics.Exporter.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Corsinvest.ProxmoxVE.Metrics.Exporter.Api\Corsinvest.ProxmoxVE.Metrics.Exporter.Api.csproj" />
   </ItemGroup>
 </Project>

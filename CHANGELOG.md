@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Breaking
+
+- `cv4pve_replication_failed_total` (counter) is replaced by `cv4pve_replication_fail_count` (gauge). Proxmox VE reports the failed attempts *in a row*, back to 0 at the first success: as a counter it never went down, and new failures after a recovery were not seen. Alert on `cv4pve_replication_fail_count > 0`.
+
+### Fixed
+
+- Each scrape answered with the data of the previous one, and the first scrape after start was empty.
+- A failed login or an unreachable cluster stopped the exporter. The scrape now answers HTTP 503, so Prometheus sets `up` to 0, and the exporter keeps running.
+- Series of objects that no longer exist were exported forever: a deleted guest or storage, a renamed guest, old tags, the previous version of an upgraded node, a guest later covered by a backup job, an offline node's per-node metrics.
+- Guest disk and network counters stayed frozen after a guest restarted or migrated; they now reset, and `rate()` works.
+- HA: `cv4pve_ha_node_state` never reported the node states, and `cv4pve_ha_state` did not use the states of the HA manager. Both now come from `/cluster/ha/status/manager_status`.
+- SMART: SAS disks, which report `OK` instead of `PASSED`, were exported as unhealthy.
+- The standard profile did not cache backup coverage (10 min) and subscription (1 h); a setting left out of the settings file now takes its standard value.
+- A call that failed was cached like a successful one and not retried until the cache expired.
+- Failed backup-coverage and balloon calls were not counted in `cv4pve_scrape_errors_total` (balloon: `section="guest"`), and `cv4pve_scrape_last_success_timestamp_seconds` advanced even when calls failed.
+- `--debug` and `--log-level` did not log the Proxmox VE API calls.
+- Under systemd without a `WorkingDirectory` the exporter hung at start (a file watcher on `/`); `systemctl stop` ended with exit code 143 and marked the unit failed; `Type=notify` reported ready before the endpoint was listening.
+- When the HTTP endpoint could not start (port taken, address not allowed) the exporter exited with code 0, so `Restart=on-failure` did not restart it.
+- As a Windows service, the log was not written anywhere; it now goes to the Event Log.
+- Help text of `--settings-file`.
+
 ### Changed
 - Documentation site: [corsinvest.github.io/cv4pve-metrics-exporter](https://corsinvest.github.io/cv4pve-metrics-exporter/), with every metric, alert rules and service setup; shorter README
 - Updated Corsinvest.ProxmoxVE.Api.Extension and Api.Console to 9.2.3

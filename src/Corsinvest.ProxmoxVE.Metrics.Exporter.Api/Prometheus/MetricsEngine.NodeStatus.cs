@@ -80,10 +80,22 @@ public partial class MetricsEngine
 
     private void WriteNodeAssignmentMetrics()
     {
-        foreach (var node in _resources.Where(r => r.ResourceType == ClusterResourceType.Node))
+        var series = new Series();
+        foreach (var node in _resources.Where(r => r.ResourceType == ClusterResourceType.Node && r.IsOnline))
         {
-            _nodeCpuAssigned.WithLabels(node.Node).Set(node.NodeCpuAssigned);
-            _nodeMemoryAssigned.WithLabels(node.Node).Set(node.NodeMemoryAssigned);
+            series.Set(_nodeCpuAssigned, node.NodeCpuAssigned, node.Node);
+            series.Set(_nodeMemoryAssigned, node.NodeMemoryAssigned, node.Node);
+        }
+        series.Prune(_nodeCpuAssigned);
+        series.Prune(_nodeMemoryAssigned);
+    }
+
+    private void RemoveNodeStatusSeries(Func<string[], bool> predicate)
+    {
+        foreach (var gauge in new[] { _nodeUptime, _nodeLoadAvg1, _nodeLoadAvg5, _nodeLoadAvg15, _nodeMemoryUsed, _nodeMemoryTotal,
+                                      _nodeSwapUsed, _nodeSwapTotal, _nodeRootFsUsed, _nodeRootFsTotal })
+        {
+            RemoveWhere(gauge, predicate);
         }
     }
 }

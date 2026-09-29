@@ -26,19 +26,23 @@ public partial class MetricsEngine
 
     private void WriteBackupMetrics(Result result)
     {
-        if (result.Response?.data is not IEnumerable<dynamic> entries) { return; }
-
+        var series = new Series();
         var count = 0;
-        foreach (var entry in entries)
-        {
-            var type = (string?)entry.type ?? "";
-            var vmid = (string?)(entry.vmid?.ToString()) ?? "";
-            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(vmid)) { continue; }
 
-            _notBackedUpInfo.WithLabels($"{type}/{vmid}").Set(1);
-            count++;
+        if (result.Response?.data is IEnumerable<dynamic> entries)
+        {
+            foreach (var entry in entries)
+            {
+                var type = (string?)entry.type ?? "";
+                var vmid = (string?)(entry.vmid?.ToString()) ?? "";
+                if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(vmid)) { continue; }
+
+                series.Set(_notBackedUpInfo, 1, $"{type}/{vmid}");
+                count++;
+            }
         }
 
         _guestsNotBackedUp.WithLabels().Set(count);
+        series.Prune(_notBackedUpInfo);
     }
 }
