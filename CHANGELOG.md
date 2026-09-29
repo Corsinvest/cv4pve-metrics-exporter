@@ -9,6 +9,7 @@
 ### Fixed
 
 - Each scrape answered with the data of the previous one, and the first scrape after start was empty.
+- Concurrent API calls could receive each other's answers (the shared `LastResult` of the API client): each call now uses its own client, sharing connection and login.
 - A failed login or an unreachable cluster stopped the exporter. The scrape now answers HTTP 503, so Prometheus sets `up` to 0, and the exporter keeps running.
 - Series of objects that no longer exist were exported forever: a deleted guest or storage, a renamed guest, old tags, the previous version of an upgraded node, a guest later covered by a backup job, an offline node's per-node metrics.
 - Guest disk and network counters stayed frozen after a guest restarted or migrated; they now reset, and `rate()` works.

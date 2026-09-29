@@ -28,19 +28,24 @@ internal sealed class FakePve : HttpMessageHandler
     public PveClient CreateClient()
         => new("pve01", 8006, new HttpClient(this)) { ApiToken = "metrics@pve!metrics=00000000-0000-0000-0000-000000000000" };
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    /// <summary>Delay of every answer: with a delay the answers complete concurrently, like a real API.</summary>
+    public TimeSpan Latency { get; set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var path = request.RequestUri!.AbsolutePath["/api2/json".Length..];
         lock (Calls) { Calls.Add($"{request.Method} {path}"); }
 
+        if (Latency > TimeSpan.Zero) { await Task.Delay(Latency, cancellationToken); }
+
         if (Failures.TryGetValue(path, out var status))
         {
-            return Task.FromResult(Json(status, """{"data":null}"""));
+            return Json(status, """{"data":null}""");
         }
 
-        return Task.FromResult(Data.TryGetValue(path, out var data)
-                                ? Json(HttpStatusCode.OK, new JsonObject { ["data"] = data?.DeepClone() }.ToJsonString())
-                                : Json(HttpStatusCode.NotImplemented, """{"data":null}"""));
+        return Data.TryGetValue(path, out var data)
+                ? Json(HttpStatusCode.OK, new JsonObject { ["data"] = data?.DeepClone() }.ToJsonString())
+                : Json(HttpStatusCode.NotImplemented, """{"data":null}""");
     }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string json)

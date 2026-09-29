@@ -34,7 +34,7 @@ public partial class MetricsEngine
         var calls = new ConcurrentDictionary<string, Task<Result>>();
         await RunParallelAsync(vms, async vm =>
         {
-            var call = Checked(client.Nodes[vm.Node].Qemu[vm.VmId].Monitor.Monitor("info balloon"));
+            var call = Checked(Fork(client).Nodes[vm.Node].Qemu[vm.VmId].Monitor.Monitor("info balloon"));
             calls[vm.Id] = call;
             await SafeTaskExtensions.WhenAllSafe(call);
         });

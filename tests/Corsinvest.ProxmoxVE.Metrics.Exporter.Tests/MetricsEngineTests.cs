@@ -404,6 +404,29 @@ public class MetricsEngineTests
         Assert.Equal(1, s.Value("cv4pve_node_subscription_status", "node=pve01", "status=active"));
     }
 
+    // ----- Concurrent calls -----
+
+    [Fact]
+    public async Task Concurrent_calls_get_their_own_results()
+    {
+        // PveClientBase (SDK 9.2.3) returns its shared LastResult field: with a slow RequestCompleted handler,
+        // concurrent calls on one client receive each other's answers.
+        var h = AllOn();
+        h.Pve.Latency = TimeSpan.FromMilliseconds(10);
+        var client = h.Pve.CreateClient();
+        client.RequestCompleted += (_, _) => Thread.Sleep(20);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await h.Engine.CollectAsync(client);
+            var s = await Scrape.FromAsync(h.Registry);
+
+            Assert.False(s.Has("cv4pve_scrape_errors_total"), $"collection {i} had failed calls");
+            Assert.Equal(1, s.Value("cv4pve_up", "id=node/pve02"));
+            Assert.Equal(0.5, s.Value("cv4pve_guest_cpu_usage_ratio", "id=lxc/101"));
+        }
+    }
+
     // ----- Collectors off -----
 
     [Fact]

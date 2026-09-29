@@ -83,7 +83,6 @@ public partial class MetricsEngine
     {
         var sw = Stopwatch.StartNew();
         _failedCalls = 0;
-        if (_settings.ApiInstrumentation) { client.RequestCompleted += OnApiRequestCompleted; }
 
         try
         {
@@ -95,21 +94,20 @@ public partial class MetricsEngine
         }
         finally
         {
-            if (_settings.ApiInstrumentation) { client.RequestCompleted -= OnApiRequestCompleted; }
             _scrapeDuration.Set(sw.Elapsed.TotalSeconds);
         }
     }
 
     private async Task CollectClusterWideAsync(PveClient client)
     {
-        var statusTask = client.Cluster.Status.GetAsync();
-        var resourcesTask = client.Cluster.Resources.GetAsync();
+        var statusTask = Fork(client).Cluster.Status.GetAsync();
+        var resourcesTask = Fork(client).Cluster.Resources.GetAsync();
         var haEnabled = ShouldCollect("cluster:ha", _settings.Cluster.Ha);
         var backupEnabled = ShouldCollect("cluster:backup_info", _settings.Cluster.BackupInfo);
 
-        var haTask = haEnabled ? client.Cluster.Ha.Resources.GetAsync() : null;
-        var haManagerTask = haEnabled ? Checked(client.Cluster.Ha.Status.ManagerStatus.ManagerStatus()) : null;
-        var backupTask = backupEnabled ? Checked(client.Cluster.BackupInfo.NotBackedUp.GetGuestsNotInBackup()) : null;
+        var haTask = haEnabled ? Fork(client).Cluster.Ha.Resources.GetAsync() : null;
+        var haManagerTask = haEnabled ? Checked(Fork(client).Cluster.Ha.Status.ManagerStatus.ManagerStatus()) : null;
+        var backupTask = backupEnabled ? Checked(Fork(client).Cluster.BackupInfo.NotBackedUp.GetGuestsNotInBackup()) : null;
 
         var tasks = new Task?[] { statusTask, resourcesTask, haTask, haManagerTask, backupTask }
                         .Where(t => t is not null).Cast<Task>().ToArray();
@@ -166,11 +164,11 @@ public partial class MetricsEngine
         var smartEnabled = ShouldCollect($"node:disk_smart:{name}", _settings.Node.DiskSmart);
         var replEnabled = ShouldCollect($"node:replication:{name}", _settings.Node.Replication);
 
-        var statusTask = statusEnabled ? client.Nodes[name].Status.GetAsync() : null;
-        var subTask = subEnabled ? client.Nodes[name].Subscription.GetAsync() : null;
-        var versionTask = statusEnabled ? client.Nodes[name].Version.GetAsync() : null;
-        var disksTask = smartEnabled ? client.Nodes[name].Disks.List.GetAsync() : null;
-        var replTask = replEnabled ? client.Nodes[name].Replication.GetAsync() : null;
+        var statusTask = statusEnabled ? Fork(client).Nodes[name].Status.GetAsync() : null;
+        var subTask = subEnabled ? Fork(client).Nodes[name].Subscription.GetAsync() : null;
+        var versionTask = statusEnabled ? Fork(client).Nodes[name].Version.GetAsync() : null;
+        var disksTask = smartEnabled ? Fork(client).Nodes[name].Disks.List.GetAsync() : null;
+        var replTask = replEnabled ? Fork(client).Nodes[name].Replication.GetAsync() : null;
 
         var tasks = new Task?[] { statusTask, subTask, versionTask, disksTask, replTask }
                         .Where(t => t is not null).Cast<Task>().ToArray();
