@@ -1,0 +1,67 @@
+---
+title: HA
+description: High availability — the state of every HA resource, the HA state of every node and the HA quorum, every metric and label.
+---
+
+Use these metrics to know whether the HA manager is doing its job: that it has quorum, that every node
+is online for HA, and that no HA resource is stuck in `error`, `fence` or `recovery`. None of this is in
+the Proxmox VE metric server.
+
+From `/cluster/ha/resources`, `/cluster/ha/status/current` and `/cluster/ha/status/manager_status` ·
+setting `Cluster.Ha` (on in every profile; cached for 30 seconds in full).
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `cv4pve_ha_state` | gauge | `sid`, `type`, `group`, `state` | `1` for the state the HA manager reports for the resource now, `0` for the others |
+| `cv4pve_ha_node_state` | gauge | `node`, `state` | `1` for the HA state of the node now, `0` for the others |
+| `cv4pve_ha_quorate` | gauge | — | `1` if the HA manager has quorum |
+
+A cluster with no HA resources has no `cv4pve_ha_state` series.
+
+## Resources
+
+Labels of `cv4pve_ha_state`:
+
+| Label | Value |
+|---|---|
+| `sid` | The HA resource ID, e.g. `vm:100` or `ct:101` |
+| `type` | `vm` or `ct` |
+| `group` | The HA group of the resource, empty when it has none. Since Proxmox VE 9.0 groups are migrated to node affinity rules, and the label stays empty |
+| `state` | One series per state the HA manager (CRM) can give a resource |
+
+The states are those of the HA manager (the CRM state in `/cluster/ha/status/current`), described in
+the [HA chapter](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_service_states) of
+the Proxmox VE documentation:
+
+| `state` | Meaning |
+|---|---|
+| `started` | Active: the node starts it if it is not running, and restarts it if it fails |
+| `stopped` | Stopped, confirmed by the node. A disabled resource is `stopped` too |
+| `request_start`, `request_start_balance` | Start requested, not yet confirmed by the node |
+| `request_stop` | Stop requested, the CRM waits for the node to confirm |
+| `migrate` | Live migration to another node |
+| `relocate` | Moving to another node with a stop and a start |
+| `freeze` | Left untouched while its node reboots or the HA service restarts |
+| `fence` | Its node is not in the quorate partition: waiting for the node to be fenced |
+| `recovery` | Its node was fenced: waiting for a new node to run on |
+| `error` | Disabled because of errors on the node: needs manual intervention |
+
+The guest ID is inside `sid`: extract it into a `vmid` label to join with the guest metrics:
+
+```txt
+# HA resources in error, with the guest name
+label_replace(cv4pve_ha_state{state="error"} == 1, "vmid", "$1", "sid", "(?:vm|ct):(\\d+)")
+  * on (vmid) group_left (name, node) cv4pve_guest_info
+```
+
+## Nodes
+
+`cv4pve_ha_node_state` has five series per node, one per `state`:
+
+| `state` | Meaning |
+|---|---|
+| `online` | Online and member of the quorate partition |
+| `maintenance` | In the quorate partition, but not able to do work — in maintenance mode |
+| `unknown` | Not in the quorate partition, but possibly still running |
+| `fence` | Must be fenced before its resources can be recovered |
+| `gone` | No longer in the cluster member list, e.g. removed |

@@ -1,0 +1,133 @@
+---
+title: Run as a service
+description: Run cv4pve-metrics-exporter permanently with systemd on Linux or as a Windows service — no wrapper needed.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Prometheus scrapes the exporter every minute, day and night, so it has to run permanently and start
+again after a reboot. The binary integrates with both service managers by itself: it tells systemd
+when it is ready (`Type=notify`) and runs as a native Windows service, with no wrapper such as NSSM.
+
+Keep the connection options out of the command line: put them in a
+[parameter file](/cv4pve-metrics-exporter/connection/#response-files) readable only by the
+service, so the token does not appear in the process list or in the unit.
+
+## Linux (systemd)
+
+<Steps>
+
+1. Install the binary. The deb, rpm and AUR packages put it in `/usr/bin/cv4pve-metrics-exporter`; with
+   the zip, copy it there yourself.
+
+2. Create a user for the service, with no shell and no home:
+
+   ```bash
+   sudo useradd --system --no-create-home --shell /usr/sbin/nologin cv4pve-metrics
+   ```
+
+3. Create the configuration folder, the settings file and the parameter file with the connection
+   options:
+
+   ```bash
+   sudo install -d -m 750 -o root -g cv4pve-metrics /etc/cv4pve-metrics-exporter
+   cd /etc/cv4pve-metrics-exporter
+   sudo cv4pve-metrics-exporter create-settings -o settings.json   # add --fast or --full to start from those
+   sudo tee connection.conf > /dev/null <<'EOF'
+   --host=pve1.local,pve2.local
+   --api-token=metrics@pve!metrics=<uuid>
+   EOF
+   sudo chown root:cv4pve-metrics settings.json connection.conf
+   sudo chmod 640 settings.json connection.conf
+   ```
+
+   In `settings.json`, set `Host` to `*` if Prometheus runs on another machine — see
+   [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address). In the parameter file
+   the token needs no quotes.
+
+4. Create `/etc/systemd/system/cv4pve-metrics-exporter.service`:
+
+   ```ini
+   [Unit]
+   Description=cv4pve-metrics-exporter - Prometheus exporter for Proxmox VE
+   Wants=network-online.target
+   After=network-online.target
+
+   [Service]
+   Type=notify
+   User=cv4pve-metrics
+   Group=cv4pve-metrics
+   WorkingDirectory=/etc/cv4pve-metrics-exporter
+   ExecStart=/usr/bin/cv4pve-metrics-exporter @/etc/cv4pve-metrics-exporter/connection.conf --settings-file=/etc/cv4pve-metrics-exporter/settings.json run
+   Restart=on-failure
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+5. Start it, and enable it at boot:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now cv4pve-metrics-exporter
+   systemctl status cv4pve-metrics-exporter
+   curl -s http://localhost:9221/metrics/ | head
+   ```
+
+</Steps>
+
+`Type=notify` makes `systemctl start` return only once the HTTP endpoint is listening, and
+`Restart=on-failure` starts it again if it stops with an error — for example when the port is taken at
+boot. Use absolute paths in `ExecStart`: the parameter file and `--settings-file` are not looked up in
+the folder of the binary.
+
+The output goes to the journal:
+
+```bash
+journalctl -u cv4pve-metrics-exporter -f
+```
+
+To change the settings, edit the file and run `sudo systemctl restart cv4pve-metrics-exporter`: the
+settings are read only at start.
+
+## Windows (service)
+
+<Steps>
+
+1. Unzip `cv4pve-metrics-exporter.exe-win-x64.zip` into a folder for all users, e.g.
+   `C:\Program Files\cv4pve-metrics-exporter`. The WinGet package installs per user, in a folder the
+   service account does not use.
+
+2. Create the settings file and the parameter file, in an administrator PowerShell:
+
+   ```powershell
+   $dir = 'C:\ProgramData\cv4pve-metrics-exporter'
+   New-Item -ItemType Directory -Force $dir | Out-Null
+   & 'C:\Program Files\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe' create-settings -o "$dir\settings.json"
+   Set-Content "$dir\connection.conf" "--host=pve1.local,pve2.local`n--api-token=metrics@pve!metrics=<uuid>"
+   ```
+
+   Then restrict `C:\ProgramData\cv4pve-metrics-exporter` to Administrators and SYSTEM: the parameter file
+   holds the token.
+
+3. Create and start the service:
+
+   ```powershell
+   sc.exe create cv4pve-metrics-exporter start= auto DisplayName= "cv4pve-metrics-exporter" binPath= '"C:\Program Files\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe" @C:\ProgramData\cv4pve-metrics-exporter\connection.conf --settings-file=C:\ProgramData\cv4pve-metrics-exporter\settings.json run'
+   sc.exe start cv4pve-metrics-exporter
+   ```
+
+   `sc.exe` needs the space after each `start=`, `DisplayName=` and `binPath=`.
+
+</Steps>
+
+The service runs as `LocalSystem`, which is allowed to listen on every interface: set `Host` to `*` if
+Prometheus runs on another machine, and open the port in Windows Firewall:
+
+```powershell
+New-NetFirewallRule -DisplayName 'cv4pve-metrics-exporter' -Direction Inbound -Protocol TCP -LocalPort 9221 -Action Allow
+```
+
+To change the settings, edit the file and restart the service (`sc.exe stop` / `sc.exe start`). To see
+why the service does not start, stop it and run the same command line in a console.

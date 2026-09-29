@@ -1,0 +1,119 @@
+---
+title: Cluster and nodes
+description: Availability, quorum, node status and version, CPU and memory overcommit, subscription and SMART disk health — every metric and label.
+---
+
+Use these metrics to know whether the cluster is quorate and every node is up, how loaded and how
+overcommitted each node is, which Proxmox VE version it runs, when its subscription expires and whether
+its disks are healthy.
+
+Only **online** nodes are read by the per-node collectors: an offline node keeps `cv4pve_up` and
+`cv4pve_node_info`, and its per-node metrics are no longer exported.
+
+## Availability
+
+From `/cluster/status` and `/cluster/resources` · always exported.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `cv4pve_up` | gauge | `id`, `type` | `1` if the resource is up, `0` if not |
+
+What "up" means for each `type`:
+
+| `type` | `id` | `1` when |
+|---|---|---|
+| `cluster` | `cluster/<name>` | the cluster is quorate |
+| `node` | `node/<name>` | the node is online in the cluster |
+| `qemu`, `lxc` | `qemu/<vmid>`, `lxc/<vmid>` | the guest status is `running` |
+| `storage` | `storage/<node>/<storage>` | the storage status is `available` |
+
+A guest that is stopped on purpose is also `0`: to alert only on guests that should run, combine it with
+HA or with tags — see [Alerting](/cv4pve-metrics-exporter/alerting/).
+
+## Cluster
+
+From `/cluster/status` · always exported. The `cv4pve_cluster_*` metrics exist only on a cluster: a
+single node that is not part of one has no cluster entry.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `cv4pve_cluster_info` | gauge | `name`, `version` | Always `1`. `name` is the cluster name, `version` the version of the corosync configuration file, which increases each time it changes |
+| `cv4pve_cluster_quorate` | gauge | `name` | `1` if the cluster is quorate |
+| `cv4pve_cluster_nodes` | gauge | `name` | Number of nodes in the cluster, offline ones included |
+| `cv4pve_node_info` | gauge | `id`, `name`, `ip`, `level` | Always `1`, one per node. `ip` is the address the node name resolves to. `level` is the subscription level: `None`, `Community`, `Basic`, `Standard` or `Premium` |
+
+## Node status
+
+From `/nodes/{node}/status` and `/nodes/{node}/version` · setting `Node.Status` (on in standard and full).
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_node_uptime_seconds` | gauge | `node` | seconds | Time since the node booted |
+| `cv4pve_node_load_avg1` | gauge | `node` | — | Load average over 1 minute |
+| `cv4pve_node_load_avg5` | gauge | `node` | — | Load average over 5 minutes |
+| `cv4pve_node_load_avg15` | gauge | `node` | — | Load average over 15 minutes |
+| `cv4pve_node_memory_used_bytes` | gauge | `node` | bytes | RAM in use on the node |
+| `cv4pve_node_memory_total_bytes` | gauge | `node` | bytes | RAM of the node |
+| `cv4pve_node_swap_used_bytes` | gauge | `node` | bytes | Swap in use |
+| `cv4pve_node_swap_total_bytes` | gauge | `node` | bytes | Swap size |
+| `cv4pve_node_root_fs_used_bytes` | gauge | `node` | bytes | Used space on the root filesystem of the node |
+| `cv4pve_node_root_fs_total_bytes` | gauge | `node` | bytes | Size of the root filesystem |
+| `cv4pve_node_version_info` | gauge | `node`, `version`, `release`, `repoid` | — | Always `1`. `version` is the `pve-manager` version (`8.4.21`), `release` the major release (`8.4`), `repoid` the build commit |
+
+`cv4pve_node_version_info` shows at a glance which nodes are behind during a rolling upgrade:
+
+```txt
+count by (version) (cv4pve_node_version_info)
+```
+
+## Overcommit
+
+From `/cluster/resources` · exported when `Node.Status` is on.
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_node_cpu_assigned_cores` | gauge | `node` | cores | Sum of the vCPUs of the guests running on the node |
+| `cv4pve_node_memory_assigned_bytes` | gauge | `node` | bytes | Sum of the memory configured on the guests running on the node |
+
+"Running" here means a guest with uptime greater than zero. Compared with the node resources they show
+how much the node is overcommitted — memory is the one that matters, since guests cannot share it:
+
+```txt
+# Configured memory of running guests over node RAM (1 = fully assigned)
+cv4pve_node_memory_assigned_bytes / on (node) cv4pve_node_memory_total_bytes
+```
+
+## Subscription
+
+From `/nodes/{node}/subscription` · setting `Node.Subscription` (on in standard and full, cached for an
+hour).
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_node_subscription_info` | gauge | `node`, `level` | — | Always `1`. `level`: `None`, `Community`, `Basic`, `Standard` or `Premium` |
+| `cv4pve_node_subscription_status` | gauge | `node`, `status` | — | `1` for the current status, `0` for the others. `status`: `active`, `expired`, `new`, `notfound`, `invalid`, `suspended` |
+| `cv4pve_node_subscription_next_due_timestamp_seconds` | gauge | `node` | Unix time | Next due date of the subscription, at midnight UTC. Not exported when the node has no due date |
+
+A node without a subscription has `status="notfound"`. Days left before the subscription expires:
+
+```txt
+(cv4pve_node_subscription_next_due_timestamp_seconds - time()) / 86400
+```
+
+## SMART
+
+From `/nodes/{node}/disks/list` · setting `Node.DiskSmart` (on only in full, cached for 10 minutes).
+One call per node lists every physical disk with the SMART result Proxmox VE reads with `smartctl`.
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_node_disk_health` | gauge | `node`, `serial`, `type`, `dev_path` | — | `1` if the SMART health is `PASSED` (ATA, NVMe) or `OK` (SAS), `0` otherwise — failed, `UNKNOWN` or SMART not available |
+| `cv4pve_node_disk_wearout` | gauge | `node`, `serial`, `type`, `dev_path` | percent | Life **left** of an SSD or NVMe disk, from `100` (new) down to `0`. Not exported for hard disks or when Proxmox VE reports `N/A` |
+
+`type` is the disk type Proxmox VE detects: `hdd`, `ssd`, `nvme`, `usb` or `unknown`. `dev_path` is the
+device, e.g. `/dev/sda`; `serial` identifies the disk even if the device name changes after a reboot.
+
+:::note[Why SMART is off by default]
+Reading SMART runs `smartctl` on every disk of every node. On nodes with many disks the call is slow,
+and the data changes slowly: the full profile turns it on with a 10-minute cache.
+:::

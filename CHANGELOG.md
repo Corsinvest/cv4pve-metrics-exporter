@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- Documentation site: [corsinvest.github.io/cv4pve-metrics-exporter](https://corsinvest.github.io/cv4pve-metrics-exporter/), with every metric, alert rules and service setup; shorter README
 - Updated Corsinvest.ProxmoxVE.Api.Extension and Api.Console to 9.2.3
 - Product icon (Lucide `chart-spline`) and Windows executable icon
 - Project metadata, symbols (Source Link, `.snupkg`) and code style aligned with the other cv4pve tools

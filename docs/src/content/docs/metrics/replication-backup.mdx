@@ -1,0 +1,72 @@
+---
+title: Replication and backup
+description: Storage replication jobs of every node, and the guests no backup job covers — every metric and label.
+---
+
+Use these metrics to catch the two silent failures of data protection: a replication job that stopped
+syncing, and a VM or container that no backup job includes.
+
+## Replication
+
+From `/nodes/{node}/replication` of every online node · setting `Node.Replication` (on in standard and
+full; cached for a minute in full).
+
+Each node lists the replication jobs it runs — those whose guest is on it — so reading every node covers
+every job of the cluster. The jobs of a node that is offline are not read until it is back.
+
+| Metric | Type | Labels | Unit | Meaning |
+|---|---|---|---|---|
+| `cv4pve_replication_last_sync_timestamp_seconds` | gauge | `id`, `type`, `source`, `target`, `guest` | Unix time | Last successful sync |
+| `cv4pve_replication_next_sync_timestamp_seconds` | gauge | same | Unix time | Next scheduled sync |
+| `cv4pve_replication_duration_seconds` | gauge | same | seconds | Duration of the last sync |
+| `cv4pve_replication_fail_count` | gauge | same | — | Failed attempts in a row: `0` after a successful sync |
+
+Labels:
+
+| Label | Value |
+|---|---|
+| `id` | The job ID, `<vmid>-<number>`, e.g. `100-0` |
+| `type` | The job type: `local` for storage replication between nodes |
+| `source` | The node the guest runs on |
+| `target` | The node the guest is replicated to |
+| `guest` | The VM or container ID |
+
+`cv4pve_replication_fail_count` is the value Proxmox VE keeps for the job: it grows by one at each
+failed attempt and goes back to `0` at the first success. While it is above `0`, Proxmox VE retries the
+job with a growing delay, so the replica on the target gets older. Two ways to alert:
+
+```txt
+# The last attempt of a job failed
+cv4pve_replication_fail_count > 0
+
+# The replica is older than 2 hours
+time() - cv4pve_replication_last_sync_timestamp_seconds > 7200
+```
+
+The second one also catches a job that no longer runs at all. Choose the threshold from the schedule of
+your jobs.
+
+## Backup coverage
+
+From `/cluster/backup-info/not-backed-up` · setting `Cluster.BackupInfo` (on in every profile; cached
+for 10 minutes in standard and full).
+
+Proxmox VE lists the guests that no backup job includes. A new VM that no job selects — neither by
+ID, nor by pool, nor through a job for all guests — has no backup until someone notices.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `cv4pve_not_backed_up_info` | gauge | `id` | `1` for each guest that no backup job includes. The series disappears at the next read after a job covers it |
+| `cv4pve_guests_not_backed_up` | gauge | — | Number of guests that no backup job includes |
+
+```txt
+# Guests without a backup job, with name and node
+cv4pve_not_backed_up_info
+  * on (id) group_left (name, node) cv4pve_guest_info
+```
+
+:::note[Coverage, not success]
+These metrics tell whether a guest is *in* a backup job, not whether its last backup succeeded: the
+exporter does not read task logs. For failed backups use the notifications of the backup jobs in
+Proxmox VE.
+:::
