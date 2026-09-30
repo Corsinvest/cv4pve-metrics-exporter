@@ -9,10 +9,6 @@ hero:
     - text: Get started
       link: /cv4pve-metrics-exporter/getting-started/
       icon: right-arrow
-    - text: Alert rules
-      link: /cv4pve-metrics-exporter/alerting/
-      icon: right-arrow
-      variant: secondary
     - text: All metrics
       link: /cv4pve-metrics-exporter/metrics/
       variant: minimal
@@ -26,7 +22,7 @@ export const features = [
   { title: "The whole cluster in one scrape", text: "Cluster, nodes, VMs, containers and storages from two cluster-wide API calls: the number of calls does not grow with the number of guests.", href: 'prometheus/#how-a-scrape-reads-the-cluster' },
   { title: "What the built-in metrics miss", text: "HA state of resources and nodes, replication, guests no backup job includes, guest locks, subscription expiry, SMART health and SSD wearout.", href: 'metrics/' },
   { title: "Overcommit at a glance", text: "vCPUs and memory assigned to the running guests of each node, next to what the node has.", href: 'metrics/cluster-nodes/#overcommit' },
-  { title: "Alert rules included", text: "Node down, quorum lost, storage almost full, guest without backup, replication failing, HA in error, SMART failed — tested rules to copy.", href: 'alerting/' },
+  { title: "Clear when Proxmox VE fails", text: "No node reachable or login failed: HTTP 503, so Prometheus marks the target down. A single failed call is counted, and the other metrics are still exported.", href: 'troubleshooting/#when-proxmox-ve-does-not-answer' },
   { title: "Light on the cluster", text: "Three profiles, a cache per collector for slow data such as SMART and subscription, and a limit on parallel calls.", href: 'settings/' },
   { title: "Runs as a service", text: "systemd with Type=notify on Linux, a native Windows service — no wrapper, no agent on the nodes.", href: 'service/' },
 ];
