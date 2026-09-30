@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0] - 2026-09-30
 
 ### Breaking
 
@@ -25,10 +25,13 @@
 - Help text of `--settings-file`.
 
 ### Changed
-- Documentation site: [corsinvest.github.io/cv4pve-metrics-exporter](https://corsinvest.github.io/cv4pve-metrics-exporter/), with every metric, alert rules and service setup; shorter README
-- Updated Corsinvest.ProxmoxVE.Api.Extension and Api.Console to 9.2.4
-- Product icon (Lucide `chart-spline`) and Windows executable icon
-- Project metadata, symbols (Source Link, `.snupkg`) and code style aligned with the other cv4pve tools
+
+- Documentation site: [corsinvest.github.io/cv4pve-metrics-exporter](https://corsinvest.github.io/cv4pve-metrics-exporter/), with every metric and label, the Prometheus scrape configuration, the systemd and Windows service setup, and the privileges the token needs; shorter README.
+- The HTTP endpoint is served by the exporter itself instead of the prometheus-net `MetricServer`: same `Host`, `Port` and `Url`, and each scrape waits for its own collection.
+- Updated Corsinvest.ProxmoxVE.Api.Extension and Api.Console to 9.2.4.
+- Product icon (Lucide `chart-spline`) and Windows executable icon.
+- Project metadata, symbols (Source Link, `.snupkg`) and code style aligned with the other cv4pve tools; shared cv4pve-tools CI workflow.
+- Test project with an in-memory Proxmox VE API.
 
 ## [2.0.0] - 2026-04-20
 
