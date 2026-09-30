@@ -16,7 +16,7 @@ const string SettingsFileName = "settings.json";
 
 var app = ConsoleHelper.CreateApp("Metrics Exporter for Proxmox VE");
 
-var optSettingsFile = app.AddOption<string>("--settings-file", $"Settings file (default: {SettingsFileName})")
+var optSettingsFile = app.AddOption<string>("--settings-file", "Settings file made with create-settings (without it, run uses the profile of --fast/--full)")
                         .AddValidatorExistFile();
 
 // create-settings
@@ -42,7 +42,7 @@ var cmdRun = app.AddCommand("run", "Run exporters");
 var optRunFast = cmdRun.AddOption<bool>("--fast", "Use fast profile (ignored if --settings-file is set)");
 var optRunFull = cmdRun.AddOption<bool>("--full", "Use full profile (ignored if --settings-file is set)");
 
-cmdRun.SetAction(async (action) =>
+cmdRun.SetAction(async (action, cancellationToken) =>
 {
     var settingsFile = action.GetValue(optSettingsFile);
     var settings = !string.IsNullOrWhiteSpace(settingsFile)
@@ -53,12 +53,16 @@ cmdRun.SetAction(async (action) =>
                                 ? Settings.Full()
                                 : Settings.Standard();
 
-    var host = Host.CreateDefaultBuilder()
+    var options = new MetricsServiceOptions { Settings = settings };
+
+    // A plain HostBuilder, not Host.CreateDefaultBuilder: no appsettings.json and no file watcher on the
+    // content root, which under systemd is "/" and would be watched recursively.
+    var host = new HostBuilder()
                    .UseSystemd()
                    .UseWindowsService()
                    .ConfigureLogging(logging =>
                    {
-                       logging.ClearProviders();
+                       // UseWindowsService adds the Event Log when running as a Windows service.
                        logging.AddConsole();
 
                        var logLevel = app.GetLogLevelFromDebug();
@@ -67,27 +71,29 @@ cmdRun.SetAction(async (action) =>
                        logging.AddFilter("Corsinvest.ProxmoxVE.Api.PveClientBase", logLevel);
                        logging.SetMinimumLevel(logLevel);
                    })
-                    .ConfigureServices((_, services) =>
-                    {
-                        var lf = LoggerFactory.Create(b => b.AddConsole());
+                   .ConfigureServices((_, services) =>
+                   {
+                       services.AddSingleton(sp =>
+                       {
+                           // The API calls log through the host loggers, so --debug and --log-level apply to them.
+                           var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                           options.ClientFactory = () => ClientHelper.GetClientAndTryLoginAsync(
+                               action.GetValue(app.GetHostOption())!,
+                               action.GetValue(app.GetUsernameOption())!,
+                               app.GetPasswordFromOption(),
+                               action.GetValue(app.GetApiTokenOption()),
+                               action.GetValue(app.GetValidateCertificateOption()),
+                               loggerFactory);
+                           return options;
+                       });
 
-                        services.AddSingleton(new MetricsServiceOptions
-                        {
-                            Settings = settings,
-                            ClientFactory = () => ClientHelper.GetClientAndTryLoginAsync(
-                                action.GetValue(app.GetHostOption())!,
-                                action.GetValue(app.GetUsernameOption())!,
-                                app.GetPasswordFromOption(),
-                                action.GetValue(app.GetApiTokenOption()),
-                                action.GetValue(app.GetValidateCertificateOption()),
-                                lf),
-                        });
+                       services.AddHostedService<MetricsBackgroundService>();
+                   })
+                   .Build();
 
-                        services.AddHostedService<MetricsBackgroundService>();
-                    })
-                    .Build();
-
-    await host.RunAsync();
+    // Ctrl+C and SIGTERM cancel the token: the host stops cleanly and the process exits with 0.
+    await host.RunAsync(cancellationToken);
+    return options.ExitCode;
 });
 
 var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());

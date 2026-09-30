@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
  */
 
+using Microsoft.Extensions.Logging;
 using Prometheus;
 
 namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Prometheus;
@@ -25,6 +26,13 @@ public partial class MetricsEngine
     private void TrackErrors(string section, params Task[] tasks)
     {
         var failed = tasks.Count(t => t.IsFaulted || t.IsCanceled);
-        if (failed > 0) { _scrapeErrors.WithLabels(section).Inc(failed); }
+        if (failed == 0) { return; }
+
+        _scrapeErrors.WithLabels(section).Inc(failed);
+        Interlocked.Add(ref _failedCalls, failed);
+        foreach (var t in tasks.Where(t => t.IsFaulted))
+        {
+            _logger.LogWarning("Proxmox VE call failed ({Section}): {Message}", section, t.Exception?.GetBaseException().Message);
+        }
     }
 }

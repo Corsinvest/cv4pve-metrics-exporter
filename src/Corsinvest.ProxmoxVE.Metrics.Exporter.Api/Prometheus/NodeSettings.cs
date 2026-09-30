@@ -11,8 +11,8 @@ public class NodeSettings
     /// <summary>Memory/swap/load/uptime + node version.</summary>
     public CollectorSettings Status { get; set; } = new();
 
-    /// <summary>Subscription status and level.</summary>
-    public CollectorSettings Subscription { get; set; } = new();
+    /// <summary>Subscription status and level. Cached one hour by default.</summary>
+    public CollectorSettings Subscription { get; set; } = new() { CacheSeconds = 3600 };
 
     /// <summary>Replication jobs status.</summary>
     public CollectorSettings Replication { get; set; } = new();

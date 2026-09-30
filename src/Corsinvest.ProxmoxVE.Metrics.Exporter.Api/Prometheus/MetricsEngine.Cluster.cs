@@ -36,23 +36,30 @@ public partial class MetricsEngine
 
     private void WriteClusterMetrics()
     {
+        var series = new Series();
         foreach (var item in _statusEntries)
         {
             if (item.Type == "cluster")
             {
                 var name = item.Name ?? "";
-                _clusterInfo.WithLabels(name, item.Version.ToString()).Set(1);
-                _clusterQuorate.WithLabels(name).Set(item.Quorate);
-                _clusterNodes.WithLabels(name).Set(item.Nodes);
+                series.Set(_clusterInfo, 1, name, item.Version.ToString());
+                series.Set(_clusterQuorate, item.Quorate, name);
+                series.Set(_clusterNodes, item.Nodes, name);
             }
             else if (item.Type == "node" && !string.IsNullOrEmpty(item.Id))
             {
-                _nodeInfo.WithLabels(item.Id,
-                                     item.Name ?? "",
-                                     item.IpAddress ?? "",
-                                     NodeHelper.DecodeLevelSupport(item.Level).ToString())
-                         .Set(1);
+                series.Set(_nodeInfo,
+                           1,
+                           item.Id,
+                           item.Name ?? "",
+                           item.IpAddress ?? "",
+                           NodeHelper.DecodeLevelSupport(item.Level).ToString());
             }
         }
+
+        series.Prune(_clusterInfo);
+        series.Prune(_clusterQuorate);
+        series.Prune(_clusterNodes);
+        series.Prune(_nodeInfo);
     }
 }

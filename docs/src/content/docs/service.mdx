@@ -57,7 +57,6 @@ service, so the token does not appear in the process list or in the unit.
    Type=notify
    User=cv4pve-metrics
    Group=cv4pve-metrics
-   WorkingDirectory=/etc/cv4pve-metrics-exporter
    ExecStart=/usr/bin/cv4pve-metrics-exporter @/etc/cv4pve-metrics-exporter/connection.conf --settings-file=/etc/cv4pve-metrics-exporter/settings.json run
    Restart=on-failure
    RestartSec=10

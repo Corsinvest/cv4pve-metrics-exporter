@@ -30,13 +30,12 @@ public partial class MetricsEngine
                                        "Guest lock state (1 if matches state, 0 otherwise)",
                                        new GaugeConfiguration { LabelNames = ["id", "state"] });
 
-    private void WriteGuestLock(ClusterResource item)
+    private void WriteGuestLock(Series series, ClusterResource item)
     {
         var current = item.Lock ?? "";
         foreach (var state in LockStates)
         {
-            _guestLock.WithLabels(item.Id, state)
-                      .Set(ToBit(string.Equals(current, state, StringComparison.OrdinalIgnoreCase)));
+            series.Set(_guestLock, ToBit(string.Equals(current, state, StringComparison.OrdinalIgnoreCase)), item.Id, state);
         }
     }
 }

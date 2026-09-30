@@ -7,7 +7,7 @@ Use these metrics to know whether the HA manager is doing its job: that it has q
 is online for HA, and that no HA resource is stuck in `error`, `fence` or `recovery`. None of this is in
 the Proxmox VE metric server.
 
-From `/cluster/ha/resources`, `/cluster/ha/status/current` and `/cluster/ha/status/manager_status` ·
+From `/cluster/ha/resources` and `/cluster/ha/status/manager_status` ·
 setting `Cluster.Ha` (on in every profile; cached for 30 seconds in full).
 
 | Metric | Type | Labels | Meaning |
@@ -29,7 +29,7 @@ Labels of `cv4pve_ha_state`:
 | `group` | The HA group of the resource, empty when it has none. Since Proxmox VE 9.0 groups are migrated to node affinity rules, and the label stays empty |
 | `state` | One series per state the HA manager (CRM) can give a resource |
 
-The states are those of the HA manager (the CRM state in `/cluster/ha/status/current`), described in
+The states are those of the HA manager (the service state in `manager_status`), described in
 the [HA chapter](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_service_states) of
 the Proxmox VE documentation:
 

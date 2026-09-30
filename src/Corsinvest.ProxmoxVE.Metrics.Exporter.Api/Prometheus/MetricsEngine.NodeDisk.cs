@@ -28,19 +28,32 @@ public partial class MetricsEngine
                                           labels);
     }
 
+    // smartctl reports "PASSED" for ATA and NVMe disks, "OK" for SAS disks.
+    private static bool IsHealthy(string? health) => health is "PASSED" or "OK";
+
     private void WriteNodeDiskMetrics(ClusterStatus node, IEnumerable<NodeDiskList> disks)
     {
+        var series = new Series();
         foreach (var disk in disks)
         {
             var labels = new[] { node.Name, disk.Serial ?? "", disk.Type ?? "", disk.DevPath ?? "" };
 
-            _nodeDiskHealth.WithLabels(labels).Set(ToBit(disk.Health == "PASSED"));
+            series.Set(_nodeDiskHealth, ToBit(IsHealthy(disk.Health)), labels);
 
             if (!string.IsNullOrWhiteSpace(disk.Wearout) && disk.Wearout != "N/A"
                 && double.TryParse(disk.Wearout, NumberStyles.Float, CultureInfo.InvariantCulture, out var wearout))
             {
-                _nodeDiskWearout.WithLabels(labels).Set(wearout);
+                series.Set(_nodeDiskWearout, wearout, labels);
             }
         }
+
+        series.Prune(_nodeDiskHealth, labels => labels[0] == node.Name);
+        series.Prune(_nodeDiskWearout, labels => labels[0] == node.Name);
+    }
+
+    private void RemoveNodeDiskSeries(Func<string[], bool> predicate)
+    {
+        RemoveWhere(_nodeDiskHealth, predicate);
+        RemoveWhere(_nodeDiskWearout, predicate);
     }
 }

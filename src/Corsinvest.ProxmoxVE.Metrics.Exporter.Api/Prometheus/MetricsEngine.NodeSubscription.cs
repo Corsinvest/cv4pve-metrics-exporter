@@ -39,20 +39,33 @@ public partial class MetricsEngine
 
     private void WriteNodeSubscriptionMetrics(ClusterStatus node, NodeSubscription sub)
     {
-        _nodeSubscriptionInfo.WithLabels(node.Name,
-                                         NodeHelper.DecodeLevelSupport(sub.Level).ToString())
-                             .Set(1);
+        var series = new Series();
+        series.Set(_nodeSubscriptionInfo, 1, node.Name, NodeHelper.DecodeLevelSupport(sub.Level).ToString());
 
         foreach (var s in SubscriptionStatuses)
         {
-            _nodeSubscriptionStatus.WithLabels(node.Name, s)
-                .Set(ToBit(string.Equals(sub.Status, s, StringComparison.OrdinalIgnoreCase)));
+            series.Set(_nodeSubscriptionStatus, ToBit(string.Equals(sub.Status, s, StringComparison.OrdinalIgnoreCase)), node.Name, s);
         }
 
         if (!string.IsNullOrWhiteSpace(sub.NextDuedate)
-            && DateTime.TryParse(sub.NextDuedate, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var due))
+            && DateTime.TryParse(sub.NextDuedate,
+                                 CultureInfo.InvariantCulture,
+                                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                                 out var due))
         {
-            _nodeSubscriptionNextDue.WithLabels(node.Name).Set(new DateTimeOffset(due).ToUnixTimeSeconds());
+            series.Set(_nodeSubscriptionNextDue, new DateTimeOffset(due, TimeSpan.Zero).ToUnixTimeSeconds(), node.Name);
         }
+
+        bool OfNode(string[] labels) => labels[0] == node.Name;
+        series.Prune(_nodeSubscriptionInfo, OfNode);
+        series.Prune(_nodeSubscriptionStatus, OfNode);
+        series.Prune(_nodeSubscriptionNextDue, OfNode);
+    }
+
+    private void RemoveNodeSubscriptionSeries(Func<string[], bool> predicate)
+    {
+        RemoveWhere(_nodeSubscriptionInfo, predicate);
+        RemoveWhere(_nodeSubscriptionStatus, predicate);
+        RemoveWhere(_nodeSubscriptionNextDue, predicate);
     }
 }

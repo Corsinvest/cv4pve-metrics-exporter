@@ -3,13 +3,16 @@
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
  */
 
+using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
+using Newtonsoft.Json.Linq;
 using Prometheus;
 
 namespace Corsinvest.ProxmoxVE.Metrics.Exporter.Api.Prometheus;
 
 public partial class MetricsEngine
 {
+    // Service states of the HA manager (CRM), pve-ha-manager src/PVE/HA/Manager.pm $valid_service_states.
     private static readonly string[] HaGuestStates =
     [
         "stopped",
@@ -23,9 +26,9 @@ public partial class MetricsEngine
         "relocate",
         "freeze",
         "error",
-        "disabled",
     ];
 
+    // Node states of the HA manager, pve-ha-manager src/PVE/HA/NodeStatus.pm $valid_node_states.
     private static readonly string[] HaNodeStates =
     [
         "online",
@@ -54,39 +57,44 @@ public partial class MetricsEngine
                                     new GaugeConfiguration { LabelNames = [] });
     }
 
-    private void WriteHaMetrics(IEnumerable<ClusterHaResource> resources)
+    /// <summary>
+    /// Resources from /cluster/ha/resources (sid, type, group); their state, the node states and the quorum
+    /// from /cluster/ha/status/manager_status.
+    /// </summary>
+    private void WriteHaMetrics(IEnumerable<ClusterHaResource> resources, Result managerStatus)
     {
+        var data = managerStatus.Response?.data is object d ? JToken.FromObject(d) : null;
+        var status = data?["manager_status"];
+        var services = status?["service_status"] as JObject;
+        var series = new Series();
+
         foreach (var ha in resources.Where(r => r.Type is "vm" or "ct" && !string.IsNullOrEmpty(r.Sid)))
         {
+            var current = (string?)services?[ha.Sid]?["state"] ?? "";
             foreach (var state in HaGuestStates)
             {
-                _haState.WithLabels(ha.Sid,
-                                    ha.Type,
-                                    ha.Group ?? "",
-                                    state)
-                        .Set(ToBit(string.Equals(ha.State ?? "", state, StringComparison.OrdinalIgnoreCase)));
+                series.Set(_haState, ToBit(current == state), ha.Sid, ha.Type, ha.Group ?? "", state);
             }
         }
-    }
 
-    private void WriteHaStatusMetrics(IEnumerable<ClusterHaStatusCurrent> status)
-    {
-        foreach (var entry in status)
+        if (status?["node_status"] is JObject nodes)
         {
-            switch (entry.Type)
+            foreach (var (node, value) in nodes)
             {
-                case "node":
-                    foreach (var state in HaNodeStates)
-                    {
-                        _haNodeState.WithLabels(entry.Node ?? "", state)
-                                    .Set(ToBit(string.Equals(entry.Status ?? "", state, StringComparison.OrdinalIgnoreCase)));
-                    }
-                    break;
-
-                case "quorum":
-                    _haQuorate.WithLabels().Set(ToBit(entry.Quorate));
-                    break;
+                var current = (string?)value ?? "";
+                foreach (var state in HaNodeStates)
+                {
+                    series.Set(_haNodeState, ToBit(current == state), node, state);
+                }
             }
         }
+
+        if (data?["quorum"]?["quorate"] is JValue quorate)
+        {
+            _haQuorate.WithLabels().Set(ToBit(quorate.Type == JTokenType.Boolean ? (bool)quorate : (long?)quorate > 0));
+        }
+
+        series.Prune(_haState);
+        series.Prune(_haNodeState);
     }
 }
