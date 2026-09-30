@@ -27,8 +27,14 @@ What "up" means for each `type`:
 | `qemu`, `lxc` | `qemu/<vmid>`, `lxc/<vmid>` | the guest status is `running` |
 | `storage` | `storage/<node>/<storage>` | the storage status is `available` |
 
-A guest that is stopped on purpose is also `0`: to alert only on guests that should run, combine it with
-HA or with tags — see [Alerting](/cv4pve-metrics-exporter/alerting/).
+A guest that is stopped on purpose is also `0`. To follow only the guests that must run, join it with
+the `tags` label of `cv4pve_guest_info`, or use the [HA](/cv4pve-metrics-exporter/metrics/ha/) states:
+
+```txt
+# Guests tagged "monitor" that are not running
+(cv4pve_up{type=~"qemu|lxc"} == 0)
+  * on (id) group_left (name, node) cv4pve_guest_info{tags=~"(.*;)?monitor(;.*)?"}
+```
 
 ## Cluster
 

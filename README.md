@@ -61,7 +61,7 @@ Every metric, label and unit is described in [Metrics](https://corsinvest.github
 - **The whole cluster in one scrape** — nodes, VMs, containers and storages from two cluster-wide API calls, whatever the number of guests.
 - **What the built-in metrics miss** — HA state of resources and nodes, replication, backup coverage, guest locks, subscription expiry, SMART health and SSD wearout.
 - **Overcommit** — vCPUs and memory assigned to the running guests of each node.
-- **Alert rules included** — node down, quorum lost, storage almost full, guest without backup, replication failing, HA in error, SMART failed.
+- **Clear when Proxmox VE fails** — no node reachable or login failed: HTTP 503, so Prometheus marks the target down; a single failed call is counted and the other metrics are still exported.
 - **Light on the cluster** — `--fast` and `--full` profiles, a cache per collector, a limit on parallel calls.
 - **Runs as a service** — systemd with `Type=notify`, native Windows service, no wrapper.
 
@@ -95,7 +95,6 @@ Then add the exporter to `prometheus.yml` — see [Prometheus](https://corsinves
 | [Connection](https://corsinvest.github.io/cv4pve-metrics-exporter/connection/) | Connection options, options in a file for the service |
 | [Prometheus](https://corsinvest.github.io/cv4pve-metrics-exporter/prometheus/) | Scrape configuration, listening address, how a scrape reads the cluster |
 | [Run as a service](https://corsinvest.github.io/cv4pve-metrics-exporter/service/) | systemd on Linux, Windows service |
-| [Alerting](https://corsinvest.github.io/cv4pve-metrics-exporter/alerting/) | Ready-to-use Prometheus alert rules |
 | [Metrics](https://corsinvest.github.io/cv4pve-metrics-exporter/metrics/) | Every metric, label and unit, and the setting that turns it on |
 | [Settings](https://corsinvest.github.io/cv4pve-metrics-exporter/settings/) | Profiles, settings file, cache, performance |
 | [Troubleshooting](https://corsinvest.github.io/cv4pve-metrics-exporter/troubleshooting/) | What happens when Proxmox VE fails, startup errors, debug output |

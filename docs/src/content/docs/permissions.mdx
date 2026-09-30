@@ -3,53 +3,33 @@ title: Permissions
 description: The Proxmox VE user, API token and privileges cv4pve-metrics-exporter needs — read-only, PVEAuditor is enough.
 ---
 
-cv4pve-metrics-exporter only reads: every metric comes from a `GET` call, plus one read-only QEMU
-monitor command for the balloon. What it exports is exactly what its account is allowed to see. Use a
-dedicated user with an API token rather than `root@pam`: the token sits in a service file on a machine
-outside the cluster, and a read-only token there is a much smaller risk than a root password.
+cv4pve-metrics-exporter reads the cluster through the API, so what it exports is exactly what its account
+is allowed to see. Use a dedicated user with an API token rather than `root@pam`.
 
 ## User and token
 
-Create a [user](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_users) or an [API token](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens) and [assign it](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_permission_management) the built-in
-`PVEAuditor` role on `/`. It holds every privilege listed below. On a node:
-
-```bash
-pveum user add metrics@pve
-pveum acl modify / --roles PVEAuditor --users metrics@pve
-pveum user token add metrics@pve metrics --privsep 0   # prints the secret once: save it
-```
-
-The token is then `metrics@pve!metrics=<secret>`, to pass with `--api-token`.
+Create a [user](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_users) or an [API token](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens) and [assign it](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_permission_management) the privileges below, on `/`.
+The built-in `PVEAuditor` role covers all of them.
 
 :::caution[Tokens with privilege separation]
-A token with privilege separation (the default in the web UI, `--privsep 1`) does **not** inherit the
-user's permissions: grant the role to the token too —
-`pveum acl modify / --roles PVEAuditor --tokens 'metrics@pve!metrics'` — or the exporter sees an empty
-cluster.
+A token with privilege separation (the default in the web UI) does **not** inherit the user's
+permissions: grant the role to the token too, or cv4pve-metrics-exporter sees an empty cluster.
 :::
 
 ## Privileges
 
-Each Proxmox VE call the exporter makes, with the privilege the API requires for it (from the
-[API schema](https://pve.proxmox.com/pve-docs/api-viewer/)):
-
-| Call | Privilege | Feeds | Without it |
+| Privilege | On | Used for | Without it |
 |---|---|---|---|
-| `GET /cluster/status` | `Sys.Audit` on `/` | Cluster and node metrics, and the list of nodes for every per-node call | No cluster or node metrics, no per-node calls |
-| `GET /cluster/resources` | any user; the list is filtered | Guests and storages | Guests without `VM.Audit` and storages without `Datastore.Audit` are simply missing |
-| `GET /cluster/ha/resources`, `/cluster/ha/status/manager_status` | `Sys.Audit` on `/` | [HA](/cv4pve-metrics-exporter/metrics/ha/) | Error, no HA metrics |
-| `GET /cluster/backup-info/not-backed-up` | `Sys.Audit` on `/` | [Backup coverage](/cv4pve-metrics-exporter/metrics/replication-backup/#backup-coverage) | Error, no backup metrics |
-| `GET /nodes/{node}/status` | `Sys.Audit` on `/nodes/{node}` | [Node status](/cv4pve-metrics-exporter/metrics/cluster-nodes/#node-status) | Error for each node |
-| `GET /nodes/{node}/version` | any user | Node version | — |
-| `GET /nodes/{node}/subscription` | any user | [Subscription](/cv4pve-metrics-exporter/metrics/cluster-nodes/#subscription) | — |
-| `GET /nodes/{node}/replication` | any user; jobs filtered by `VM.Audit` on the guest | [Replication](/cv4pve-metrics-exporter/metrics/replication-backup/#replication) | Jobs of guests you cannot audit are missing |
-| `GET /nodes/{node}/disks/list` | `Sys.Audit` on `/` or `/nodes/{node}` | [SMART](/cv4pve-metrics-exporter/metrics/cluster-nodes/#smart) | Error for each node |
-| `POST /nodes/{node}/qemu/{vmid}/monitor` with `info balloon` | `Sys.Audit` on `/vms/{vmid}` | [Balloon](/cv4pve-metrics-exporter/metrics/guests/#balloon) | Error for each VM |
+| `Sys.Audit` | `/` | Cluster status, HA, backup coverage, node status and version, SMART, QEMU balloon | No cluster and node metrics and no per-node calls; HA, backup coverage and SMART fail |
+| `VM.Audit` | `/vms` | VMs, containers and their replication jobs | Guests and their replication jobs are missing |
+| `Datastore.Audit` | `/storage` | Storages | Storages are missing |
 
-The monitor call is a `POST`, but `info` commands only read: the API requires `Sys.Modify` or root only
-for the commands that change the VM.
+All three are read-only, unlike the backup and update privileges cv4pve-report and cv4pve-diag can use:
+the exporter needs nothing more than `PVEAuditor`. The balloon is read with `info balloon` on the QEMU
+monitor, a `POST` that Proxmox VE allows with `Sys.Audit`: it requires `Sys.Modify` only for the monitor
+commands that change the VM.
 
-## How missing privileges show up
+## How missing privileges are reported
 
 Proxmox VE answers a request the caller is only partly entitled to by *filtering the response*, not by
 failing it. `/cluster/resources` drops the guests and storages you cannot audit, and returns `200 OK`:

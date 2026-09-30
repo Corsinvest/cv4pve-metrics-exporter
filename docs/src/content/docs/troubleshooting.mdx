@@ -11,7 +11,7 @@ Every scrape connects to Proxmox VE again, so the exporter keeps running while t
 recovers by itself when it is back.
 
 - **No node reachable, or the login fails**: the scrape answers **HTTP 503**. Prometheus sets `up` to
-  `0` for the target, so the standard "target down" alert fires — see [Alerting](/cv4pve-metrics-exporter/alerting/).
+  `0` for the target.
 - **A single call fails** — a node offline, a missing privilege, a timeout: the scrape still answers
   `200`. The metrics of that call keep the values of the last successful read, the other metrics are
   current. The failure is counted in `cv4pve_scrape_errors_total{section}`, and
@@ -24,7 +24,7 @@ Run with `--debug` to see the error Proxmox VE returned.
 :::caution[An empty result is not always an error]
 Proxmox VE does not answer with an error when a token may see only part of the cluster: it leaves out
 what the token cannot see. A guest without `VM.Audit` simply has no metrics, and no error is counted.
-See [Permissions](/cv4pve-metrics-exporter/permissions/#how-missing-privileges-show-up).
+See [Permissions](/cv4pve-metrics-exporter/permissions/#how-missing-privileges-are-reported).
 :::
 
 ## Startup errors

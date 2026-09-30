@@ -37,7 +37,7 @@ export default defineConfig({
         },
         {
           label: 'Integration',
-          items: ['prometheus', 'service', 'alerting'],
+          items: ['prometheus', 'service'],
         },
         {
           label: 'Metrics',
