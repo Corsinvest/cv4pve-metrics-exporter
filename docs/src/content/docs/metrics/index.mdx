@@ -19,7 +19,7 @@ itself:
 | Node | `node/pve01` |
 | VM | `qemu/100` |
 | Container | `lxc/101` |
-| Storage | `storage/pve01/local-zfs` — one per node, also for a shared storage |
+| Storage | `storage/pve01/local-zfs`, one per node, also for a shared storage |
 | Cluster (only in `cv4pve_up`) | `cluster/pve-cluster` |
 
 Per-node metrics use a `node` label with the node name instead.
@@ -27,7 +27,7 @@ Per-node metrics use a `node` label with the node name instead.
 ### Info metrics
 
 Names, tags, versions and other text are not repeated on every series: they are labels of an
-`…_info` metric whose value is always `1` — `cv4pve_guest_info`, `cv4pve_node_info`,
+`…_info` metric whose value is always `1`: `cv4pve_guest_info`, `cv4pve_node_info`,
 `cv4pve_storage_info`, `cv4pve_node_version_info`, `cv4pve_node_subscription_info`, `cv4pve_cluster_info`.
 Join them in a query to add the label you need:
 
@@ -39,7 +39,7 @@ cv4pve_guest_memory_usage_bytes
 
 ### State metrics
 
-A state with a fixed set of values — a guest lock, an HA state, a subscription status — is exported as
+A state with a fixed set of values (a guest lock, an HA state, a subscription status) is exported as
 one series per possible value, with a `state` (or `status`) label, and value `1` for the current state
 and `0` for the others. The alert is then a plain comparison, and a guest that stays locked keeps the
 same series:
@@ -59,7 +59,7 @@ cv4pve_guest_lock{state="backup"} == 1
 
 ### Always on, or turned on by a setting
 
-The metrics built from the two cluster-wide calls — `/cluster/status` and `/cluster/resources` — are
+The metrics built from the two cluster-wide calls, `/cluster/status` and `/cluster/resources`, are
 always exported. The others come from a collector, turned on and cached by a
 [setting](/cv4pve-metrics-exporter/settings/). A collector that is off exports no series at all.
 

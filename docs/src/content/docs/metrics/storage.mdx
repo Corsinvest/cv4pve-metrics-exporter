@@ -1,6 +1,6 @@
 ---
 title: Storage
-description: Size, usage, content types and availability of every Proxmox VE storage, per node — every metric and label.
+description: Size, usage, content types and availability of every Proxmox VE storage, per node, every metric and label.
 ---
 
 Use these metrics to see how full each storage is, how fast it fills up, and whether it is available on
@@ -11,12 +11,12 @@ not in the list.
 
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
-| `cv4pve_storage_info` | gauge | `id`, `node`, `storage`, `content` | — | Always `1`, one per storage and node |
-| `cv4pve_storage_shared` | gauge | `id` | — | `1` if the storage is shared between nodes (NFS, Ceph, PBS…) |
+| `cv4pve_storage_info` | gauge | `id`, `node`, `storage`, `content` | - | Always `1`, one per storage and node |
+| `cv4pve_storage_shared` | gauge | `id` | - | `1` if the storage is shared between nodes (NFS, Ceph, PBS…) |
 | `cv4pve_storage_size_bytes` | gauge | `id` | bytes | Total size |
 | `cv4pve_storage_usage_bytes` | gauge | `id` | bytes | Used space |
 
-Availability is in `cv4pve_up{type="storage"}`: `1` when the storage status is `available` — see
+Availability is in `cv4pve_up{type="storage"}`: `1` when the storage status is `available`, see
 [Cluster and nodes](/cv4pve-metrics-exporter/metrics/cluster-nodes/#availability).
 
 Labels of `cv4pve_storage_info`:
@@ -32,8 +32,8 @@ Labels of `cv4pve_storage_info`:
 
 Proxmox VE lists every storage once per node that can use it, and so does the exporter: a storage
 shared by three nodes has three `id`s, each with the same size and usage, because each node reports it
-on its own, with the status it sees. This is useful — `cv4pve_up` tells whether each node can use the
-storage — but it counts shared space more than once. To add up the space of the cluster, count a
+on its own, with the status it sees. This is useful (`cv4pve_up` tells whether each node can use the
+storage), but it counts shared space more than once. To add up the space of the cluster, count a
 shared storage once:
 
 ```txt

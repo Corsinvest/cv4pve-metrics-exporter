@@ -35,7 +35,7 @@ public class Settings
     /// <summary>Guest (VM/CT) collection toggles.</summary>
     public GuestSettings Guest { get; set; } = new();
 
-    /// <summary>Minimum API calls — only cluster-wide bulk data, nothing cached.</summary>
+    /// <summary>Minimum API calls: only cluster-wide bulk data, nothing cached.</summary>
     public static Settings Fast() => new()
     {
         ApiInstrumentation = false,
@@ -53,7 +53,7 @@ public class Settings
     };
 
     /// <summary>
-    /// Default — everything cheap is on, slow-changing data is cached, expensive opt-ins are off.
+    /// Default: everything cheap is on, slow-changing data is cached, expensive opt-ins are off.
     /// These are the property defaults, so a setting left out of a settings file takes its standard value.
     /// </summary>
     public static Settings Standard() => new();

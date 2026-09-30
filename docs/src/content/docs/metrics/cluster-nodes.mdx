@@ -1,6 +1,6 @@
 ---
 title: Cluster and nodes
-description: Availability, quorum, node status and version, CPU and memory overcommit, subscription and SMART disk health — every metric and label.
+description: Availability, quorum, node status and version, CPU and memory overcommit, subscription and SMART disk health, every metric and label.
 ---
 
 Use these metrics to know whether the cluster is quorate and every node is up, how loaded and how
@@ -55,16 +55,16 @@ From `/nodes/{node}/status` and `/nodes/{node}/version` · setting `Node.Status`
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
 | `cv4pve_node_uptime_seconds` | gauge | `node` | seconds | Time since the node booted |
-| `cv4pve_node_load_avg1` | gauge | `node` | — | Load average over 1 minute |
-| `cv4pve_node_load_avg5` | gauge | `node` | — | Load average over 5 minutes |
-| `cv4pve_node_load_avg15` | gauge | `node` | — | Load average over 15 minutes |
+| `cv4pve_node_load_avg1` | gauge | `node` | - | Load average over 1 minute |
+| `cv4pve_node_load_avg5` | gauge | `node` | - | Load average over 5 minutes |
+| `cv4pve_node_load_avg15` | gauge | `node` | - | Load average over 15 minutes |
 | `cv4pve_node_memory_used_bytes` | gauge | `node` | bytes | RAM in use on the node |
 | `cv4pve_node_memory_total_bytes` | gauge | `node` | bytes | RAM of the node |
 | `cv4pve_node_swap_used_bytes` | gauge | `node` | bytes | Swap in use |
 | `cv4pve_node_swap_total_bytes` | gauge | `node` | bytes | Swap size |
 | `cv4pve_node_root_fs_used_bytes` | gauge | `node` | bytes | Used space on the root filesystem of the node |
 | `cv4pve_node_root_fs_total_bytes` | gauge | `node` | bytes | Size of the root filesystem |
-| `cv4pve_node_version_info` | gauge | `node`, `version`, `release`, `repoid` | — | Always `1`. `version` is the `pve-manager` version (`8.4.21`), `release` the major release (`8.4`), `repoid` the build commit |
+| `cv4pve_node_version_info` | gauge | `node`, `version`, `release`, `repoid` | - | Always `1`. `version` is the `pve-manager` version (`8.4.21`), `release` the major release (`8.4`), `repoid` the build commit |
 
 `cv4pve_node_version_info` shows at a glance which nodes are behind during a rolling upgrade:
 
@@ -82,7 +82,7 @@ From `/cluster/resources` · exported when `Node.Status` is on.
 | `cv4pve_node_memory_assigned_bytes` | gauge | `node` | bytes | Sum of the memory configured on the guests running on the node |
 
 "Running" here means a guest with uptime greater than zero. Compared with the node resources they show
-how much the node is overcommitted — memory is the one that matters, since guests cannot share it:
+how much the node is overcommitted. Memory is the one that matters, since guests cannot share it:
 
 ```txt
 # Configured memory of running guests over node RAM (1 = fully assigned)
@@ -96,8 +96,8 @@ hour).
 
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
-| `cv4pve_node_subscription_info` | gauge | `node`, `level` | — | Always `1`. `level`: `None`, `Community`, `Basic`, `Standard` or `Premium` |
-| `cv4pve_node_subscription_status` | gauge | `node`, `status` | — | `1` for the current status, `0` for the others. `status`: `active`, `expired`, `new`, `notfound`, `invalid`, `suspended` |
+| `cv4pve_node_subscription_info` | gauge | `node`, `level` | - | Always `1`. `level`: `None`, `Community`, `Basic`, `Standard` or `Premium` |
+| `cv4pve_node_subscription_status` | gauge | `node`, `status` | - | `1` for the current status, `0` for the others. `status`: `active`, `expired`, `new`, `notfound`, `invalid`, `suspended` |
 | `cv4pve_node_subscription_next_due_timestamp_seconds` | gauge | `node` | Unix time | Next due date of the subscription, at midnight UTC. Not exported when the node has no due date |
 
 A node without a subscription has `status="notfound"`. Days left before the subscription expires:
@@ -113,7 +113,7 @@ One call per node lists every physical disk with the SMART result Proxmox VE rea
 
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
-| `cv4pve_node_disk_health` | gauge | `node`, `serial`, `type`, `dev_path` | — | `1` if the SMART health is `PASSED` (ATA, NVMe) or `OK` (SAS), `0` otherwise — failed, `UNKNOWN` or SMART not available |
+| `cv4pve_node_disk_health` | gauge | `node`, `serial`, `type`, `dev_path` | - | `1` if the SMART health is `PASSED` (ATA, NVMe) or `OK` (SAS), `0` otherwise: failed, `UNKNOWN` or SMART not available |
 | `cv4pve_node_disk_wearout` | gauge | `node`, `serial`, `type`, `dev_path` | percent | Life **left** of an SSD or NVMe disk, from `100` (new) down to `0`. Not exported for hard disks or when Proxmox VE reports `N/A` |
 
 `type` is the disk type Proxmox VE detects: `hdd`, `ssd`, `nvme`, `usb` or `unknown`. `dev_path` is the

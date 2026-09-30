@@ -1,6 +1,6 @@
 ---
 title: Exporter
-description: Metrics about the exporter itself — scrape duration, last success, errors, and the duration and errors of every Proxmox VE API endpoint.
+description: Metrics about the exporter itself (scrape duration, last success, errors, and the duration and errors of every Proxmox VE API endpoint).
 ---
 
 Use these metrics to know whether the numbers you see are fresh, and to find which Proxmox VE call is
@@ -12,9 +12,9 @@ Always exported.
 
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
-| `cv4pve_scrape_duration_seconds` | gauge | — | seconds | Time the last scrape took to read the cluster |
-| `cv4pve_scrape_last_success_timestamp_seconds` | gauge | — | Unix time | End of the last scrape in which every call succeeded |
-| `cv4pve_scrape_errors_total` | counter | `section` | — | Failed calls, by `section`: `cluster` (the cluster-wide calls), `node` (per-node calls), `guest` (balloon) |
+| `cv4pve_scrape_duration_seconds` | gauge | - | seconds | Time the last scrape took to read the cluster |
+| `cv4pve_scrape_last_success_timestamp_seconds` | gauge | - | Unix time | End of the last scrape in which every call succeeded |
+| `cv4pve_scrape_errors_total` | counter | `section` | - | Failed calls, by `section`: `cluster` (the cluster-wide calls), `node` (per-node calls), `guest` (balloon) |
 
 `cv4pve_scrape_duration_seconds` is what to compare with the `scrape_timeout` of Prometheus. It grows
 with the size of the cluster and the collectors that are on: see [Settings](/cv4pve-metrics-exporter/settings/#performance)
@@ -38,9 +38,9 @@ Setting `ApiInstrumentation` (on in standard and full, off in fast).
 | Metric | Type | Labels | Unit | Meaning |
 |---|---|---|---|---|
 | `cv4pve_api_request_duration_seconds` | histogram | `method`, `endpoint` | seconds | Duration of each Proxmox VE API call |
-| `cv4pve_api_request_errors_total` | counter | `method`, `endpoint` | — | API calls answered with an HTTP error |
+| `cv4pve_api_request_errors_total` | counter | `method`, `endpoint` | - | API calls answered with an HTTP error |
 
-- `method` is `Get`, or `Create` for a `POST` — only the balloon call, which uses the QEMU monitor.
+- `method` is `Get`, or `Create` for a `POST`: only the balloon call, which uses the QEMU monitor.
 - `endpoint` is the API path with the variable parts replaced, so that each endpoint is one series:
   `/nodes/{node}/status`, `/nodes/{node}/qemu/{vmid}/monitor`, `/cluster/resources`.
 - The histogram buckets are 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10 and 30 seconds. As for any histogram,
@@ -59,5 +59,5 @@ histogram_quantile(0.99, sum by (le, endpoint) (rate(cv4pve_api_request_duration
 increase(cv4pve_api_request_errors_total[15m]) > 0
 ```
 
-On a large cluster this is the quickest way to see where a scrape spends its time — for example the
+On a large cluster this is the quickest way to see where a scrape spends its time, for example the
 balloon (`/nodes/{node}/qemu/{vmid}/monitor`), which is called once per running VM.

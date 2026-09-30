@@ -1,10 +1,10 @@
 ---
 title: cv4pve-metrics-exporter
-description: Prometheus exporter for Proxmox VE — nodes, VMs, containers, storage, HA, replication, backup coverage, subscription and SMART, read from outside the cluster through the API only.
+description: Prometheus exporter for Proxmox VE. Nodes, VMs, containers, storage, HA, replication, backup coverage, subscription and SMART, read from outside the cluster through the API only.
 template: splash
 hero:
   title: Every <span class="accent-mark">Proxmox VE</span> metric in Prometheus
-  tagline: Runs outside the nodes, API only. One endpoint for the whole cluster — nodes, VMs, containers and storage, plus what the built-in metrics leave out — HA, replication, guests without a backup, locks, subscription and SMART — ready for history, graphs and alerts.
+  tagline: Runs outside the nodes, API only. One endpoint for the whole cluster with nodes, VMs, containers and storage, plus what the built-in metrics leave out (HA, replication, guests without a backup, locks, subscription and SMART), ready for history, graphs and alerts.
   actions:
     - text: Get started
       link: /cv4pve-metrics-exporter/getting-started/
@@ -24,7 +24,7 @@ export const features = [
   { title: "Overcommit at a glance", text: "vCPUs and memory assigned to the running guests of each node, next to what the node has.", href: 'metrics/cluster-nodes/#overcommit' },
   { title: "Clear when Proxmox VE fails", text: "No node reachable or login failed: HTTP 503, so Prometheus marks the target down. A single failed call is counted, and the other metrics are still exported.", href: 'troubleshooting/#when-proxmox-ve-does-not-answer' },
   { title: "Light on the cluster", text: "Three profiles, a cache per collector for slow data such as SMART and subscription, and a limit on parallel calls.", href: 'settings/' },
-  { title: "Runs as a service", text: "systemd with Type=notify on Linux, a native Windows service — no wrapper, no agent on the nodes.", href: 'service/' },
+  { title: "Runs as a service", text: "systemd with Type=notify on Linux, a native Windows service: no wrapper, no agent on the nodes.", href: 'service/' },
 ];
 
 ```bash
@@ -68,14 +68,14 @@ syncs, which VMs no backup job includes, which guest has been locked since last 
 subscription expires, which SSD is wearing out.
 
 cv4pve-metrics-exporter reads all of it through the API and publishes it in the Prometheus format.
-Prometheus keeps the history — how a storage fills up, how memory is assigned over the months — and
+Prometheus keeps the history (how a storage fills up, how memory is assigned over the months) and
 turns the metrics into alerts that reach you before a user does.
 
 ## Outside the nodes, API only
 
-The exporter runs outside the cluster — on the Prometheus server, a management VM or any machine that
-reaches a node on port 8006 — and talks only to the Proxmox VE REST API. Nothing is installed on the
-nodes and no SSH is needed: a read-only API token with the `PVEAuditor` role is enough — see
+The exporter runs outside the cluster (on the Prometheus server, a management VM or any machine that
+reaches a node on port 8006) and talks only to the Proxmox VE REST API. Nothing is installed on the
+nodes and no SSH is needed: a read-only API token with the `PVEAuditor` role is enough, see
 [Permissions](/cv4pve-metrics-exporter/permissions/). Any node gives the view of the whole cluster; give
 it more than one and each scrape uses the first one that answers, so the metrics keep coming while a
 node is down.

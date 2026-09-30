@@ -38,8 +38,8 @@ The exporter has no timer of its own. Each time Prometheus requests the endpoint
    user and password.
 2. Reads the cluster-wide lists in parallel: `/cluster/status` and `/cluster/resources`, plus HA and
    backup coverage when those collectors are on. These give the cluster, node, guest and storage metrics.
-3. For every **online** node, reads the per-node collectors that are on — status and version,
-   subscription, replication, SMART disks — at most `MaxParallelRequests` calls at a time.
+3. For every **online** node, reads the per-node collectors that are on (status and version,
+   subscription, replication, SMART disks), at most `MaxParallelRequests` calls at a time.
 4. With the balloon collector on, asks each running QEMU VM for its balloon, again at most
    `MaxParallelRequests` at a time.
 5. Answers with all the metrics.
@@ -58,7 +58,7 @@ cached: it is tried again on the next scrape. See [Settings](/cv4pve-metrics-exp
 ### When something fails
 
 If no node answers or the login fails, the scrape answers HTTP 503 and Prometheus sets `up` to `0`. If
-a single call fails, the scrape answers normally with the other metrics and counts the error — see
+a single call fails, the scrape answers normally with the other metrics and counts the error, see
 [Troubleshooting](/cv4pve-metrics-exporter/troubleshooting/#when-proxmox-ve-does-not-answer).
 
 ### Objects that disappear
@@ -84,7 +84,7 @@ The endpoint is set in the settings file (see [Settings](/cv4pve-metrics-exporte
 | `localhost` | the same machine, as `http://localhost:9221/metrics/` | A request to `127.0.0.1` is refused. Enough when Prometheus runs on the same machine |
 | `*` | every interface, with any host name | For a Prometheus server on another machine. On Windows it needs administrator rights |
 | an IP address or host name | that address only, with that name | On Windows it needs administrator rights |
-| `0.0.0.0` | — | Not accepted: the exporter stops with `The request is not supported`. Use `*` |
+| `0.0.0.0` | - | Not accepted: the exporter stops with `The request is not supported`. Use `*` |
 
 On Windows, anything but `localhost` fails with `Access is denied` for a normal user. A Windows service
 running as `LocalSystem` has the rights it needs.
