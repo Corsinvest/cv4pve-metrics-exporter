@@ -1,6 +1,6 @@
 ---
 title: HA
-description: High availability — the state of every HA resource, the HA state of every node and the HA quorum, every metric and label.
+description: High availability, the state of every HA resource, the HA state of every node and the HA quorum, every metric and label.
 ---
 
 Use these metrics to know whether the HA manager is doing its job: that it has quorum, that every node
@@ -14,7 +14,7 @@ setting `Cluster.Ha` (on in every profile; cached for 30 seconds in full).
 |---|---|---|---|
 | `cv4pve_ha_state` | gauge | `sid`, `type`, `group`, `state` | `1` for the state the HA manager reports for the resource now, `0` for the others |
 | `cv4pve_ha_node_state` | gauge | `node`, `state` | `1` for the HA state of the node now, `0` for the others |
-| `cv4pve_ha_quorate` | gauge | — | `1` if the HA manager has quorum |
+| `cv4pve_ha_quorate` | gauge | - | `1` if the HA manager has quorum |
 
 A cluster with no HA resources has no `cv4pve_ha_state` series.
 
@@ -61,7 +61,7 @@ label_replace(cv4pve_ha_state{state="error"} == 1, "vmid", "$1", "sid", "(?:vm|c
 | `state` | Meaning |
 |---|---|
 | `online` | Online and member of the quorate partition |
-| `maintenance` | In the quorate partition, but not able to do work — in maintenance mode |
+| `maintenance` | In the quorate partition, but not able to do work (maintenance mode) |
 | `unknown` | Not in the quorate partition, but possibly still running |
 | `fence` | Must be fenced before its resources can be recovered |
 | `gone` | No longer in the cluster member list, e.g. removed |

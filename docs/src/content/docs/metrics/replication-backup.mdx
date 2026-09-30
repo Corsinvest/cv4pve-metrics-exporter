@@ -1,6 +1,6 @@
 ---
 title: Replication and backup
-description: Storage replication jobs of every node, and the guests no backup job covers — every metric and label.
+description: Storage replication jobs of every node, and the guests no backup job covers, every metric and label.
 ---
 
 Use these metrics to catch the two silent failures of data protection: a replication job that stopped
@@ -11,7 +11,7 @@ syncing, and a VM or container that no backup job includes.
 From `/nodes/{node}/replication` of every online node · setting `Node.Replication` (on in standard and
 full; cached for a minute in full).
 
-Each node lists the replication jobs it runs — those whose guest is on it — so reading every node covers
+Each node lists the replication jobs it runs (those whose guest is on it), so reading every node covers
 every job of the cluster. The jobs of a node that is offline are not read until it is back.
 
 | Metric | Type | Labels | Unit | Meaning |
@@ -19,7 +19,7 @@ every job of the cluster. The jobs of a node that is offline are not read until 
 | `cv4pve_replication_last_sync_timestamp_seconds` | gauge | `id`, `type`, `source`, `target`, `guest` | Unix time | Last successful sync |
 | `cv4pve_replication_next_sync_timestamp_seconds` | gauge | same | Unix time | Next scheduled sync |
 | `cv4pve_replication_duration_seconds` | gauge | same | seconds | Duration of the last sync |
-| `cv4pve_replication_fail_count` | gauge | same | — | Failed attempts in a row: `0` after a successful sync |
+| `cv4pve_replication_fail_count` | gauge | same | - | Failed attempts in a row: `0` after a successful sync |
 
 Labels:
 
@@ -51,13 +51,13 @@ your jobs.
 From `/cluster/backup-info/not-backed-up` · setting `Cluster.BackupInfo` (on in every profile; cached
 for 10 minutes in standard and full).
 
-Proxmox VE lists the guests that no backup job includes. A new VM that no job selects — neither by
-ID, nor by pool, nor through a job for all guests — has no backup until someone notices.
+Proxmox VE lists the guests that no backup job includes. A new VM that no job selects (neither by
+ID, nor by pool, nor through a job for all guests) has no backup until someone notices.
 
 | Metric | Type | Labels | Meaning |
 |---|---|---|---|
 | `cv4pve_not_backed_up_info` | gauge | `id` | `1` for each guest that no backup job includes. The series disappears at the next read after a job covers it |
-| `cv4pve_guests_not_backed_up` | gauge | — | Number of guests that no backup job includes |
+| `cv4pve_guests_not_backed_up` | gauge | - | Number of guests that no backup job includes |
 
 ```txt
 # Guests without a backup job, with name and node

@@ -4,7 +4,7 @@ description: Profiles, the settings.json file, every collector with its cache, t
 ---
 
 What the exporter reads is decided by a set of collectors, each with an on/off switch and a cache.
-Three profiles cover the common cases; a settings file lets you choose each one yourself — for example
+Three profiles cover the common cases; a settings file lets you choose each one yourself, for example
 to add SMART to the standard profile, or to listen on every interface.
 
 ## Profiles
@@ -48,7 +48,7 @@ cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' --s
 - `--settings-file` goes **before** `run`, and wins over `--fast` and `--full`.
 - The file is read once, at start: restart the exporter after changing it.
 - A setting left out of the file takes its standard default.
-- The file is strict JSON: no comments, no trailing commas. Setting names are **case-sensitive** — a
+- The file is strict JSON: no comments, no trailing commas. Setting names are **case-sensitive**: a
   misspelled name, `port` instead of `Port`, is ignored without an error.
 
 The standard file:
@@ -93,7 +93,7 @@ Every setting is under `Prometheus`. Defaults are those of the standard profile.
 | Setting | Default | What it does |
 |---|---|---|
 | `Enabled` | `true` | With `false` the exporter prints `No exporter enabled in settings, exiting.` and stops |
-| `Host` | `localhost` | Host name or address to listen on; `*` for every interface — see [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address) |
+| `Host` | `localhost` | Host name or address to listen on; `*` for every interface, see [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address) |
 | `Port` | `9221` | TCP port |
 | `Url` | `metrics/` | Path of the endpoint, without the leading `/` and with the trailing one |
 
@@ -101,12 +101,12 @@ Every setting is under `Prometheus`. Defaults are those of the standard profile.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `MaxParallelRequests` | `5` | Per-node and per-VM calls running at the same time — see [Performance](#performance) |
-| `ApiInstrumentation` | `true` | Duration and errors of each Proxmox VE endpoint — see [API instrumentation](/cv4pve-metrics-exporter/metrics/exporter/#api-instrumentation) |
+| `MaxParallelRequests` | `5` | Per-node and per-VM calls running at the same time, see [Performance](#performance) |
+| `ApiInstrumentation` | `true` | Duration and errors of each Proxmox VE endpoint, see [API instrumentation](/cv4pve-metrics-exporter/metrics/exporter/#api-instrumentation) |
 
 ### Collectors
 
-Every collector has the same two settings, `Enabled` and `CacheSeconds` — see [Cache](#cache).
+Every collector has the same two settings, `Enabled` and `CacheSeconds`, see [Cache](#cache).
 
 | Collector | Default | Calls | Metrics |
 |---|---|---|---|
@@ -127,7 +127,7 @@ the node list and every guest and storage metric.
 on every scrape.
 
 While the cache is valid the collector is skipped and its metrics keep the values of the last read, so
-Prometheus always gets a value — only the call is saved. Per-node collectors are cached per node. A call
+Prometheus always gets a value: only the call is saved. Per-node collectors are cached per node. A call
 that fails is not cached: it is tried again on the next scrape.
 
 Cache what changes slowly, such as the subscription, SMART and backup coverage. Do not cache what you

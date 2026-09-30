@@ -1,13 +1,13 @@
 ---
 title: Guests
-description: VMs and containers — identity, tags, locks, CPU, memory, disk, I/O counters and QEMU balloon, every metric and label.
+description: VMs and containers (identity, tags, locks, CPU, memory, disk, I/O counters and QEMU balloon), every metric and label.
 ---
 
 Use these metrics to follow each VM and container: whether it runs, how much CPU and memory it uses,
 how much traffic it does, and whether it is locked by a backup, a snapshot or a migration that never
 finished.
 
-All but the balloon come from one call, `/cluster/resources`, which lists every guest of the cluster —
+All but the balloon come from one call, `/cluster/resources`, which lists every guest of the cluster,
 so they cost the same on a cluster of 10 or 1000 guests. Guests the token may not audit are not in the
 list: see [Permissions](/cv4pve-metrics-exporter/permissions/).
 
@@ -26,7 +26,7 @@ Labels of `cv4pve_guest_info`:
 |---|---|
 | `id` | `qemu/<vmid>` or `lxc/<vmid>` |
 | `vmid` | The VM or container ID |
-| `node` | The node the guest is on now — it changes after a migration |
+| `node` | The node the guest is on now; it changes after a migration |
 | `name` | The guest name |
 | `type` | `qemu` or `lxc` |
 | `tags` | The tags of the guest, sorted and separated by `;`, e.g. `db;prod`. Empty when there are none |
@@ -98,6 +98,6 @@ VMs with a balloon device have it; containers have no balloon.
 
 :::caution[One call per running VM]
 The balloon is not in `/cluster/resources`: the exporter asks each running VM, at most
-`MaxParallelRequests` at a time. On a cluster with hundreds of VMs this makes every scrape slower —
+`MaxParallelRequests` at a time. On a cluster with hundreds of VMs this makes every scrape slower,
 which is why it is off in the standard profile.
 :::

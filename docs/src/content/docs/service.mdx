@@ -1,6 +1,6 @@
 ---
 title: Run as a service
-description: Run cv4pve-metrics-exporter permanently with systemd on Linux or as a Windows service — no wrapper needed.
+description: Run cv4pve-metrics-exporter permanently with systemd on Linux or as a Windows service, no wrapper needed.
 ---
 
 import { Steps } from '@astrojs/starlight/components';
@@ -41,7 +41,7 @@ service, so the token does not appear in the process list or in the unit.
    sudo chmod 640 settings.json connection.conf
    ```
 
-   In `settings.json`, set `Host` to `*` if Prometheus runs on another machine — see
+   In `settings.json`, set `Host` to `*` if Prometheus runs on another machine, see
    [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address). In the parameter file
    the token needs no quotes.
 
@@ -77,7 +77,7 @@ service, so the token does not appear in the process list or in the unit.
 </Steps>
 
 `Type=notify` makes `systemctl start` return only once the HTTP endpoint is listening, and
-`Restart=on-failure` starts it again if it stops with an error — for example when the port is taken at
+`Restart=on-failure` starts it again if it stops with an error, for example when the port is taken at
 boot. Use absolute paths in `ExecStart`: the parameter file and `--settings-file` are not looked up in
 the folder of the binary.
 

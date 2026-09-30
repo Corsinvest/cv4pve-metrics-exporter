@@ -1,6 +1,6 @@
 ---
 title: Permissions
-description: The Proxmox VE user, API token and privileges cv4pve-metrics-exporter needs — read-only, PVEAuditor is enough.
+description: The Proxmox VE user, API token and privileges cv4pve-metrics-exporter needs. Read-only, PVEAuditor is enough.
 ---
 
 cv4pve-metrics-exporter reads the cluster through the API, so what it exports is exactly what its account
@@ -38,5 +38,5 @@ look too small, check the privileges first.
 
 A call that fails outright, such as the node status without `Sys.Audit`, is counted in
 `cv4pve_scrape_errors_total` and, with `ApiInstrumentation` on, in `cv4pve_api_request_errors_total`
-with its endpoint — see [Exporter metrics](/cv4pve-metrics-exporter/metrics/exporter/). The other
+with its endpoint, see [Exporter metrics](/cv4pve-metrics-exporter/metrics/exporter/). The other
 metrics are still exported.

@@ -17,7 +17,7 @@ Metrics Exporter for Proxmox VE (Made in Italy)
 [![WinGet](https://img.shields.io/winget/v/Corsinvest.cv4pve.metrics-exporter?style=flat-square&logo=windows)](https://winstall.app/apps/Corsinvest.cv4pve.metrics-exporter)
 [![AUR](https://img.shields.io/aur/version/cv4pve-metrics-exporter?style=flat-square&logo=archlinux)](https://aur.archlinux.org/packages/cv4pve-metrics-exporter)
 
-> **Prometheus exporter for Proxmox VE** — one endpoint for the whole cluster: nodes, VMs, containers and storage, plus HA, replication, guests without a backup, locks, subscription and SMART.
+> **Prometheus exporter for Proxmox VE**: one endpoint for the whole cluster: nodes, VMs, containers and storage, plus HA, replication, guests without a backup, locks, subscription and SMART.
 >
 > **[Documentation](https://corsinvest.github.io/cv4pve-metrics-exporter/)**
 >
@@ -58,12 +58,12 @@ Every metric, label and unit is described in [Metrics](https://corsinvest.github
 
 ## Features
 
-- **The whole cluster in one scrape** — nodes, VMs, containers and storages from two cluster-wide API calls, whatever the number of guests.
-- **What the built-in metrics miss** — HA state of resources and nodes, replication, backup coverage, guest locks, subscription expiry, SMART health and SSD wearout.
-- **Overcommit** — vCPUs and memory assigned to the running guests of each node.
-- **Clear when Proxmox VE fails** — no node reachable or login failed: HTTP 503, so Prometheus marks the target down; a single failed call is counted and the other metrics are still exported.
-- **Light on the cluster** — `--fast` and `--full` profiles, a cache per collector, a limit on parallel calls.
-- **Runs as a service** — systemd with `Type=notify`, native Windows service, no wrapper.
+- **The whole cluster in one scrape**: nodes, VMs, containers and storages from two cluster-wide API calls, whatever the number of guests.
+- **What the built-in metrics miss**: HA state of resources and nodes, replication, backup coverage, guest locks, subscription expiry, SMART health and SSD wearout.
+- **Overcommit**: vCPUs and memory assigned to the running guests of each node.
+- **Clear when Proxmox VE fails**: HTTP 503 when no node is reachable or the login fails, so Prometheus marks the target down; a single failed call is counted and the other metrics are still exported.
+- **Light on the cluster**: `--fast` and `--full` profiles, a cache per collector, a limit on parallel calls.
+- **Runs as a service**: systemd with `Type=notify`, native Windows service, no wrapper.
 
 ---
 
@@ -82,7 +82,7 @@ unzip cv4pve-metrics-exporter-linux-x64.zip && chmod +x cv4pve-metrics-exporter
 curl http://localhost:9221/metrics/
 ```
 
-Then add the exporter to `prometheus.yml` — see [Prometheus](https://corsinvest.github.io/cv4pve-metrics-exporter/prometheus/). The API token needs only the `PVEAuditor` role: see [Permissions](https://corsinvest.github.io/cv4pve-metrics-exporter/permissions/).
+Then add the exporter to `prometheus.yml`, see [Prometheus](https://corsinvest.github.io/cv4pve-metrics-exporter/prometheus/). The API token needs only the `PVEAuditor` role: see [Permissions](https://corsinvest.github.io/cv4pve-metrics-exporter/permissions/).
 
 ---
 

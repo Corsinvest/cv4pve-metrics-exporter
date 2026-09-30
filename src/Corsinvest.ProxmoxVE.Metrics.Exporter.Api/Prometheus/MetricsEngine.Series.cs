@@ -12,8 +12,8 @@ public partial class MetricsEngine
 {
     /// <summary>
     /// The series written by one successful read of a collector. After the read, <see cref="Prune{TChild}"/>
-    /// removes the series of that collector the read did not write — a deleted guest, an old version, a
-    /// renamed tag — so they stop being exported.
+    /// removes the series of that collector the read did not write (a deleted guest, an old version, a
+    /// renamed tag), so they stop being exported.
     /// </summary>
     private sealed class Series
     {
@@ -33,8 +33,8 @@ public partial class MetricsEngine
         }
 
         /// <summary>
-        /// Sets a counter to the value Proxmox VE reports. When the value goes down — the guest restarted or
-        /// migrated and Proxmox VE counts again from zero — the series is recreated, which Prometheus sees as
+        /// Sets a counter to the value Proxmox VE reports. When the value goes down (the guest restarted or
+        /// migrated and Proxmox VE counts again from zero), the series is recreated, which Prometheus sees as
         /// a counter reset.
         /// </summary>
         public void SetCounter(Counter counter, double value, params string[] labels)
