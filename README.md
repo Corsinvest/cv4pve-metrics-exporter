@@ -97,6 +97,7 @@ Then add the exporter to `prometheus.yml`, see [Prometheus](https://corsinvest.g
 | [Run as a service](https://corsinvest.github.io/cv4pve-metrics-exporter/service/) | systemd on Linux, Windows service |
 | [Metrics](https://corsinvest.github.io/cv4pve-metrics-exporter/metrics/) | Every metric, label and unit, and the setting that turns it on |
 | [Settings](https://corsinvest.github.io/cv4pve-metrics-exporter/settings/) | Profiles, settings file, cache, performance |
+| [AI assistants](https://corsinvest.github.io/cv4pve-metrics-exporter/ai-agents/) | Claude Code, Codex, the `cv4pve-metrics-exporter` skill |
 | [Troubleshooting](https://corsinvest.github.io/cv4pve-metrics-exporter/troubleshooting/) | What happens when Proxmox VE fails, startup errors, debug output |
 
 ---

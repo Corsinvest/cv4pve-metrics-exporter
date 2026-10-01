@@ -1,0 +1,32 @@
+---
+title: AI assistants
+description: Let an AI assistant such as Claude Code or Codex read the live state of a Proxmox VE cluster from cv4pve-metrics-exporter and help you set it up, with the cv4pve-metrics-exporter skill and a read-only token.
+---
+
+import AiSkill from '@corsinvest/cv4pve-docs-theme/components/AiSkill.astro';
+
+An AI assistant that can run shell commands can use cv4pve-metrics-exporter in two ways: read the
+endpoint to answer questions with the values of this moment (which guests are running, how full a storage
+is, which guests have no backup job), and help you run the exporter as a service and scrape it from
+Prometheus.
+
+## The cv4pve-metrics-exporter skill
+
+<AiSkill tool="cv4pve-metrics-exporter">
+
+- read the endpoint of an exporter that already runs, and start one only when none does, stopping it
+  afterwards;
+- read the endpoint once and work on that copy: [every request reads the whole cluster](/cv4pve-metrics-exporter/prometheus/#how-a-scrape-reads-the-cluster);
+- show you a change to a service, to the Prometheus configuration or to the listening address before
+  making it.
+
+</AiSkill>
+
+## Give it a token of its own
+
+The skill tells the assistant what to do; the token decides what it can do. The assistant can read the
+token and call the Proxmox VE API without cv4pve-metrics-exporter, and the skill cannot prevent that.
+Give it a read-only token: `PVEAuditor` is all the exporter needs, see
+[Permissions](/cv4pve-metrics-exporter/permissions/#privileges). Put the connection in an
+[options file](/cv4pve-metrics-exporter/connection/#options-in-a-file), so the token stays out of the
+conversation. An assistant that only reads the endpoint of a running exporter needs no token at all.
