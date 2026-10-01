@@ -113,11 +113,13 @@ settings are read only at start.
 3. Create and start the service:
 
    ```powershell
-   sc.exe create cv4pve-metrics-exporter start= auto DisplayName= "cv4pve-metrics-exporter" binPath= '"C:\Program Files\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe" @C:\ProgramData\cv4pve-metrics-exporter\connection.conf --settings-file=C:\ProgramData\cv4pve-metrics-exporter\settings.json run'
-   sc.exe start cv4pve-metrics-exporter
+   New-Service -Name cv4pve-metrics-exporter -DisplayName 'cv4pve-metrics-exporter' -StartupType Automatic -BinaryPathName '"C:\Program Files\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe" @C:\ProgramData\cv4pve-metrics-exporter\connection.conf --settings-file=C:\ProgramData\cv4pve-metrics-exporter\settings.json run'
+   Start-Service cv4pve-metrics-exporter
+   Invoke-WebRequest http://localhost:9221/metrics/ -UseBasicParsing | Select-Object StatusCode
    ```
 
-   `sc.exe` needs the space after each `start=`, `DisplayName=` and `binPath=`.
+   `New-Service` works the same in Windows PowerShell 5.1 and PowerShell 7. The quotes around the
+   path of the executable are needed because of the space in `Program Files`.
 
 </Steps>
 
@@ -128,5 +130,16 @@ Prometheus runs on another machine, and open the port in Windows Firewall:
 New-NetFirewallRule -DisplayName 'cv4pve-metrics-exporter' -Direction Inbound -Protocol TCP -LocalPort 9221 -Action Allow
 ```
 
-To change the settings, edit the file and restart the service (`sc.exe stop` / `sc.exe start`). To see
-why the service does not start, stop it and run the same command line in a console.
+To change the settings, edit the file and run `Restart-Service cv4pve-metrics-exporter`: the settings
+are read only at start.
+
+Errors go to the Windows Event Log: *Event Viewer → Windows Logs → Application*, source
+`cv4pve-metrics-exporter`. A failed login, for example, is logged there as an error while the service
+keeps running and the scrape answers 503.
+
+To remove the service:
+
+```powershell
+Stop-Service cv4pve-metrics-exporter
+sc.exe delete cv4pve-metrics-exporter
+```
