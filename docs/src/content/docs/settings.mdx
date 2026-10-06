@@ -42,7 +42,7 @@ cv4pve-metrics-exporter create-settings              # standard profile
 cv4pve-metrics-exporter create-settings --fast       # or start from fast
 cv4pve-metrics-exporter create-settings --full -o /etc/cv4pve-metrics-exporter/settings.json
 # edit the file, then:
-cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' --settings-file=settings.json run
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' --settings-file=settings.json run
 ```
 
 - `create-settings` writes `settings.json` in the current folder, or the path given with `--output` / `-o`,

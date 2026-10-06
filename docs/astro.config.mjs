@@ -10,26 +10,29 @@ export default defineConfig({
     starlight({
       title: 'cv4pve-metrics-exporter',
       description: 'Prometheus exporter for Proxmox VE: nodes, VMs, containers, storage, HA, replication, backup coverage, subscription and SMART, from outside the cluster.',
-      // Brand, logo, GitHub and "Edit page" links, the Corsinvest sidebar group and
+      // Brand, product icon, GitHub link, the Corsinvest sidebar group and
       // external links in a new tab come from the shared cv4pve theme.
       plugins: [
         corsinvestTheme({
           repo: 'cv4pve-metrics-exporter',
           // Product icon: favicon and header, dark variant for the dark theme.
           icon: { light: '/icon.svg', dark: '/icon-dark.svg' },
-          // Banner on the home page: the same engine runs inside cv4pve-admin.
+          // Button in the home hero: the same engine runs inside cv4pve-admin.
           admin: { module: 'metrics-exporter' },
           // Visits, without cookies.
           matomo: { url: 'https://matomo.corsinvest.it/', siteId: 12 },
-          // Install-and-run panel in the home hero.
-          install: {
-            targets: ['linux', 'macos', 'windows'],
-            run: ['--host=pve01', "--api-token='metrics@pve!metrics=…'", 'run'],
-            output: [{ text: 'Prometheus: http://localhost:9221/metrics/', tone: 'ok' }],
+          // Steps panel in the home hero: the same steps, in the same order and words, as
+          // Getting started (CliGettingStarted). The commands are in the pages (CliInstall).
+          steps: {
+            items: [
+              'Install cv4pve-metrics-exporter',
+              { text: 'Create an API token', href: 'permissions/#user-and-token' },
+              'Run `cv4pve-metrics-exporter run`',
+              'Scrape the metrics',
+            ],
           },
         }),
       ],
-      lastUpdated: true,
       sidebar: [
         {
           label: 'Start here',

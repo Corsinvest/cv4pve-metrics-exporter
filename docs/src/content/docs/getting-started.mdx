@@ -5,70 +5,26 @@ sidebar:
   label: Getting started
 ---
 
-import CliInstall from '@corsinvest/cv4pve-docs-theme/components/CliInstall.astro';
+import CliGettingStarted from '@corsinvest/cv4pve-docs-theme/components/CliGettingStarted.astro';
 
 cv4pve-metrics-exporter runs **outside the cluster** (on the Prometheus server, a management VM or any
 machine that can reach a node on port 8006) and talks only to the Proxmox VE REST API. Nothing is
 installed on the nodes.
 
-## Installation
-
-<CliInstall repo="cv4pve-metrics-exporter" />
-
 ## First run
 
-Create a dedicated user and API token first, see [Permissions](/cv4pve-metrics-exporter/permissions/). Then
-point the tool at any node:
+<CliGettingStarted
+  repo="cv4pve-metrics-exporter"
+  run={['--host=pve01', "--api-token='metrics@pve!metrics=<uuid>'", 'run']}
+  result="Scrape the metrics"
+>
 
-```bash
-cv4pve-metrics-exporter --host=pve1.local --api-token='metrics@pve!metrics=<uuid>' run
-```
+<Fragment slot="notes">
 
 Several nodes, username and password, certificates and options in a file for the service: see
 [Connection](/cv4pve-metrics-exporter/connection/).
 
-## Run
-
-cv4pve-metrics-exporter has two commands:
-
-| Command | What it does |
-|---|---|
-| `run` | Starts the HTTP endpoint and stays in the foreground until it is stopped (Ctrl+C, `systemctl stop`, the Windows service manager). Each request to the endpoint reads the cluster and answers with the metrics, see [Prometheus](/cv4pve-metrics-exporter/prometheus/). |
-| `create-settings` | Writes `settings.json` with the standard settings (or those of `--fast` / `--full`), to edit and pass with `--settings-file`, see [Settings](/cv4pve-metrics-exporter/settings/). Needs no connection to the cluster. |
-
-Options of `run`:
-
-| Option | What it does |
-|---|---|
-| `--fast` | Fast profile: only the cluster-wide calls, no per-node calls. For large clusters or short scrape intervals. |
-| `--full` | Full profile: adds SMART disk health and QEMU balloon memory, and caches HA and replication. |
-
-Without `--fast` or `--full` the **standard** profile is used. The [profiles](/cv4pve-metrics-exporter/settings/#profiles)
-table lists exactly what each one turns on.
-
-```bash
-cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' run          # standard profile
-cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' run --fast   # large clusters
-cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' run --full   # SMART and balloon too
-
-# Your own selection of collectors, or a different address and port
-cv4pve-metrics-exporter create-settings --full        # then edit settings.json
-cv4pve-metrics-exporter --host=pve1 --api-token='metrics@pve!metrics=<uuid>' --settings-file=settings.json run
-```
-
-`--fast` and `--full` go **after** `run`. `--settings-file` goes **before** the command, with the
-connection options: after `run` it is rejected as an unknown argument. A settings file always wins over
-`--fast` and `--full`.
-
-At start the exporter prints the address it listens on:
-
-```text
-Corsinvest for Proxmox VE
-Prometheus: http://localhost:9221/metrics/
-Press Ctrl+C to stop.
-```
-
-## First scrape
+</Fragment>
 
 By default the endpoint listens only on `localhost`, port `9221`. From the same machine:
 
@@ -90,6 +46,49 @@ cv4pve_up{id="storage/pve01/local-zfs",type="storage"} 1
 Use the host name that is in the settings (`localhost` by default): a request to `127.0.0.1` gets an
 error instead of the metrics. To let a Prometheus server on another machine scrape it, change `Host`,
 see [Listening address](/cv4pve-metrics-exporter/prometheus/#listening-address).
+
+</CliGettingStarted>
+
+## Run
+
+cv4pve-metrics-exporter has two commands:
+
+| Command | What it does |
+|---|---|
+| `run` | Starts the HTTP endpoint and stays in the foreground until it is stopped (Ctrl+C, `systemctl stop`, the Windows service manager). Each request to the endpoint reads the cluster and answers with the metrics, see [Prometheus](/cv4pve-metrics-exporter/prometheus/). |
+| `create-settings` | Writes `settings.json` with the standard settings (or those of `--fast` / `--full`), to edit and pass with `--settings-file`, see [Settings](/cv4pve-metrics-exporter/settings/). Needs no connection to the cluster. |
+
+Options of `run`:
+
+| Option | What it does |
+|---|---|
+| `--fast` | Fast profile: only the cluster-wide calls, no per-node calls. For large clusters or short scrape intervals. |
+| `--full` | Full profile: adds SMART disk health and QEMU balloon memory, and caches HA and replication. |
+
+Without `--fast` or `--full` the **standard** profile is used. The [profiles](/cv4pve-metrics-exporter/settings/#profiles)
+table lists exactly what each one turns on.
+
+```bash
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' run          # standard profile
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' run --fast   # large clusters
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' run --full   # SMART and balloon too
+
+# Your own selection of collectors, or a different address and port
+cv4pve-metrics-exporter create-settings --full        # then edit settings.json
+cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' --settings-file=settings.json run
+```
+
+`--fast` and `--full` go **after** `run`. `--settings-file` goes **before** the command, with the
+connection options: after `run` it is rejected as an unknown argument. A settings file always wins over
+`--fast` and `--full`.
+
+At start the exporter prints the address it listens on:
+
+```text
+Corsinvest for Proxmox VE
+Prometheus: http://localhost:9221/metrics/
+Press Ctrl+C to stop.
+```
 
 ## Next
 

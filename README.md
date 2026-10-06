@@ -78,7 +78,7 @@ wget https://github.com/Corsinvest/cv4pve-metrics-exporter/releases/latest/downl
 unzip cv4pve-metrics-exporter-linux-x64.zip && chmod +x cv4pve-metrics-exporter
 
 # Run against any node of the cluster, with an API token
-./cv4pve-metrics-exporter --host=pve1.local --api-token='metrics@pve!metrics=<uuid>' run
+./cv4pve-metrics-exporter --host=pve01 --api-token='metrics@pve!metrics=<uuid>' run
 curl http://localhost:9221/metrics/
 ```
 
@@ -114,6 +114,10 @@ Professional support and consulting available through [Corsinvest](https://www.c
 
 ---
 
-Part of [cv4pve](https://www.corsinvest.it/cv4pve) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+**By sysadmins, for sysadmins.**
+
+Part of [cv4pve](https://www.corsinvest.it/en/cv4pve/) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+
+Proxmox® is a registered trademark of Proxmox Server Solutions GmbH. cv4pve is developed by Corsinvest and is not a Proxmox product.
 
 Copyright © Corsinvest Srl
