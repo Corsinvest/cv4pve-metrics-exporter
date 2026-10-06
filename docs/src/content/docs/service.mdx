@@ -36,7 +36,7 @@ service, so the token does not appear in the process list or in the unit.
    cd /etc/cv4pve-metrics-exporter
    sudo cv4pve-metrics-exporter create-settings -o settings.json   # add --fast or --full to start from those
    sudo tee connection.conf > /dev/null <<'EOF'
-   --host=pve1.local,pve2.local
+   --host=pve01,pve02
    --api-token=metrics@pve!metrics=<uuid>
    EOF
    sudo chown root:cv4pve-metrics settings.json connection.conf
@@ -106,7 +106,7 @@ settings are read only at start.
    $dir = 'C:\ProgramData\cv4pve-metrics-exporter'
    New-Item -ItemType Directory -Force $dir | Out-Null
    & 'C:\Program Files\cv4pve-metrics-exporter\cv4pve-metrics-exporter.exe' create-settings -o "$dir\settings.json"
-   Set-Content "$dir\connection.conf" "--host=pve1.local,pve2.local`n--api-token=metrics@pve!metrics=<uuid>"
+   Set-Content "$dir\connection.conf" "--host=pve01,pve02`n--api-token=metrics@pve!metrics=<uuid>"
    ```
 
    Then restrict `C:\ProgramData\cv4pve-metrics-exporter` to Administrators and SYSTEM: the parameter file
